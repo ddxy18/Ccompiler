@@ -16,7 +16,7 @@
  * transition map
  * 1--(letter)-->2--(letter(circle))-->2
  * 1--(digit)-->3--(digit(circle))-->3
- * 1--(!|+|=)-->4--(=)-->5
+ * 1--(!|+|%|=)-->4--(=)-->5
  * 1--(<)-->6--(<)-->7
  *           --(=)-->8
  * 1--(>)-->9--(>)-->10
@@ -32,6 +32,7 @@
  * 1--(|)-->24--(|)-->25
  * 1--(blank)-->26--(blank(circle))-->26
  * 1--("|')-->27
+ * 1--(\0)-->28
  *
  * accept state unit
  * all except 1
@@ -43,7 +44,8 @@ static const int kMaxLexLength = 100;
 static int begin = 0, end = 0, buf_flag = 0;
 
 int kType[] = {-1, ID, CONST, OP, OP, OP, OP, OP, OP, OP, OP, OP, OP, OP, SEP,
-               OP, OP, OP, OP, UNUSED, UNUSED, OP, OP, OP, OP, UNUSED, CONST};
+               OP, OP, OP, OP, UNUSED, UNUSED, OP, OP, OP, OP, UNUSED, CONST,
+               UNUSED};
 
 static char buffer[2][kBlockSize];
 
@@ -62,7 +64,7 @@ int isLetter(char c) {
 }
 
 int isBlank(char c) {
-    if (c == '\n' || c == '\t' || c == ' ') {
+    if (c == '\n' || c == '\t' || c == '\r' || c == ' ') {
         return 1;
     }
     return 0;
@@ -74,12 +76,14 @@ int isBlank(char c) {
  * @param c
  * @return 0--temporary state
  *         1--reach accept state
+ *         -1--error
  */
 int move(int *state, char c) {
     if (*state == 1) {
         switch (c) {
             case '!':
             case '+':
+            case '%':
             case '=':
                 *state = 4;
                 break;
@@ -121,13 +125,19 @@ int move(int *state, char c) {
             case '\'':
                 *state = 27;
                 break;
+            case '\0':
+                *state = 28;
+                break;
             default:
                 if (isLetter(c)) {
                     *state = 2;
                 } else if (isDigit(c)) {
                     *state = 3;
-                } else {
+                } else if (isBlank(c)) {
                     *state = 26;
+                } else {
+                    // unknown characters
+                    return -1;
                 }
         }
     } else if (*state == 2) {
@@ -244,6 +254,18 @@ void NextChar(int fd) {
         }
         end = 0;
     }
+    if (buffer[buf_flag][end] == '\n') {
+        g_loc.line++;
+        g_loc.column = 0;
+    }
+}
+
+void NewErr(char *error) {
+    ErrInfo err;
+    err.errLoc.line = g_loc.line;
+    err.errLoc.column = g_loc.column - (end - begin + kBlockSize) % kBlockSize;
+    err.error = error;
+    Enqueue(err_queue, err.next);
 }
 
 /**
@@ -252,50 +274,56 @@ void NextChar(int fd) {
  * @return A lex unit. If reaches eof, return 'NULL'.
  */
 LexUnit *AnalyseLexical(int fd) {
-    if (buffer[buf_flag][end] == '\0') {
-        return NULL;
-    }
     int state = 1, type;
     char lex_unit[kMaxLexLength];
     while (1) {
-        if (move(&state, buffer[buf_flag][end]) == 1) {
+        int i = move(&state, buffer[buf_flag][end]);
+        // unknown character
+        if (i == -1) {
+            NewErr("unknown character");
+            NextChar(fd);
+            begin = end;
+            continue;
+        }
+        // reach accept state
+        if (i == 1) {
             type = kType[state - 1];
             // skip '/*...*/' comment
             if (state == 20) {
                 while (1) {
-                    while (buffer[buf_flag][end] != '/') {
-                        NextChar(fd);
-                    }
-                    if (end == 0 && buffer[!buf_flag][kBlockSize - 1] == '*') {
-                        end++;
-                        if (buffer[buf_flag][end] == '\0') {
-                            return NULL;
-                        }
-                        break;
-                    }
-                    if (end != 0 && buffer[buf_flag][end - 1] == '*') {
+                    while (buffer[buf_flag][end] != '*') {
                         NextChar(fd);
                         if (buffer[buf_flag][end] == '\0') {
+                            // cannot find right '*/'
+                            NewErr("open comment");
                             return NULL;
                         }
-                        break;
                     }
                     NextChar(fd);
+                    if (buffer[buf_flag][end] == '\0') {
+                        // cannot find right '*/'
+                        NewErr("open comment");
+                        return NULL;
+                    }
+                    if (buffer[buf_flag][end] == '/') {
+                        NextChar(fd);
+                        break;
+                    }
                 }
             }
             // skip '//' comment
             if (state == 21) {
-                while (buffer[buf_flag][end] != '\n') {
+                while (buffer[buf_flag][end] != '\n' &&
+                       buffer[buf_flag][end] != '\0') {
                     NextChar(fd);
-                    if (buffer[buf_flag][end] == '\0') {
-                        return NULL;
-                    }
                 }
             }
             // string and character
             if (state == 27) {
                 while (buffer[buf_flag][end] != buffer[buf_flag][begin]) {
                     if (buffer[buf_flag][end] == '\0') {
+                        // not find right ' or " until eof
+                        NewErr("lack of right quotation");
                         return NULL;
                     } else if (buffer[buf_flag][end] == '\\') {
                         NextChar(fd);
@@ -325,7 +353,6 @@ LexUnit *AnalyseLexical(int fd) {
                 LexUnit *lex = malloc(sizeof(LexUnit));
                 lex->type = type;
                 lex->name = lex_unit;
-                printf("%s\n", lex->name);
                 return lex;
             }
             // copy word to 'lex_unit'
@@ -351,8 +378,11 @@ LexUnit *AnalyseLexical(int fd) {
             LexUnit *lex = malloc(sizeof(LexUnit));
             lex->type = type;
             lex->name = lex_unit;
-            printf("%s\n", lex->name);
             return lex;
+        }
+
+        if (buffer[buf_flag][end] == '\0') {
+            return NULL;
         }
         NextChar(fd);
     }
