@@ -105,10 +105,6 @@ namespace Ccompiler {
          */
         std::string GetStateType(int state);
 
-        int GetAcceptStatePriority(int state) {
-            return accept_states_[state].second;
-        }
-
         bool IsEmptyNfa() {
             return accept_states_.empty();
         }
@@ -164,7 +160,7 @@ namespace Ccompiler {
          *
          * @param size how many character ranges
          */
-        void AddState(int size);
+        void AddState(unsigned long size);
 
         int GetRegexPriority(int accept_state) {
             return accept_states_[accept_state].second;
@@ -200,7 +196,7 @@ namespace Ccompiler {
          */
         std::map<int, std::vector<std::vector<int>>> exchange_map_;
 
-        int begin_state_number_;
+        int begin_state_number_{};
 
         /**
          * Since accept states and regex rules have a 1-1 relationship, so we
@@ -237,6 +233,10 @@ namespace Ccompiler {
         std::unique_ptr<AstNode> left_son_;
         std::unique_ptr<AstNode> right_son_;
     };
+
+    std::ostream &operator<<(std::ostream &os, const Nfa &nfa);
+
+    std::istream &operator>>(std::istream &is, Nfa &nfa);
 }
 
 #endif //CCOMPILER_NFA_H

@@ -276,7 +276,6 @@ istream &Ccompiler::operator>>(istream &is, Nfa &nfa) {
     // read exchange map body
     while (getline(is, line) && line != "begin_state_number_:") {
         int state_number;
-        auto char_set_begin = char_ranges.cbegin();
         vector<vector<int>> v;
         istringstream line_stream(line);
         line_stream >> state_number;
@@ -394,7 +393,7 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
                  * Add an empty edge from 'left_nfa''s accept state new to accept
                  * state.
                  */
-                AddState(char_ranges.size() - 1);
+                AddState(char_ranges.size()-1);
                 exchange_map_[left_nfa.accept_states_.cbegin()->first][0].push_back(
                         i_ - 1);
                 /**
@@ -505,7 +504,7 @@ vector<int> Nfa::NextState(int cur_state, StrConstIt cur_it, StrConstIt end) {
     return std::move(state_vec);
 }
 
-void Nfa::AddState(int size) {
+void Nfa::AddState(unsigned long size) {
     vector<vector<int>> edge_vec;
     edge_vec.reserve(char_ranges_.size());
     for (int i = 0; i < size; ++i) {
