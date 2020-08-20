@@ -363,15 +363,28 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
                 accept_states_[i_ - 1] = {"", 0};
             } else if (ast_head->regex_ == "&") {
                 /**
-                * Add an empty edge between 'left_nfa''s accept state and
-                * 'right_nfa''s begin state.
+                * Combine 'left_nfa''s accept state and 'right_nfa''s begin
+                 * state.
                 */
-                exchange_map_[left_nfa.accept_states_.cbegin()->first][0].push_back(
-                        right_nfa.begin_state_number_);
                 begin_state_number_ = left_nfa.begin_state_number_;
-
                 accept_states_[right_nfa.accept_states_.cbegin()->first] =
                         {"", 0};
+
+                /**
+                 * Copy 'right_nfa''s begin state edges to 'left_nfa''s accept
+                 * state and remove 'right_nfa''s begin state.
+                 */
+                for (int i = 0;
+                     i < exchange_map_[right_nfa.begin_state_number_].size();
+                     ++i) {
+                    for (auto edge:
+                            exchange_map_[right_nfa.begin_state_number_][i]) {
+                        exchange_map_
+                        [left_nfa.accept_states_.cbegin()->first][i].push_back(
+                                edge);
+                    }
+                }
+                exchange_map_.erase(right_nfa.begin_state_number_);
             } else if (ast_head->regex_ == "*") {
                 /**
                 * Add an empty edge from 'left_nfa''s accept state to begin state
@@ -393,7 +406,7 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
                  * Add an empty edge from 'left_nfa''s accept state new to accept
                  * state.
                  */
-                AddState(char_ranges.size()-1);
+                AddState(char_ranges.size() - 1);
                 exchange_map_[left_nfa.accept_states_.cbegin()->first][0].push_back(
                         i_ - 1);
                 /**
