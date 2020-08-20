@@ -2,8 +2,8 @@
 // Created by dxy on 2020/8/13.
 //
 
-#ifndef CCOMPILER_LEX_H
-#define CCOMPILER_LEX_H
+#ifndef CCOMPILER_LEX_RULE_H
+#define CCOMPILER_LEX_RULE_H
 
 #include <fstream>
 #include <map>
@@ -64,4 +64,4 @@ namespace Ccompiler {
     Nfa NfaInit(const std::string &lex_file_name);
 }
 
-#endif //CCOMPILER_LEX_H
+#endif //CCOMPILER_LEX_RULE_H

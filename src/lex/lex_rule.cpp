@@ -2,7 +2,7 @@
 // Created by dxy on 2020/8/13.
 //
 
-#include "lex/lex.h"
+#include "lex/lex_rule.h"
 
 #include <sstream>
 #include <string>
