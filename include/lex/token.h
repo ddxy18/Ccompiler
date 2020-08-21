@@ -16,8 +16,9 @@ namespace Ccompiler {
 
     class Token {
     public:
-        Token(std::string token, std::string type)
-                : token_(std::move(token)), type_(std::move(type)) {}
+        Token(std::string token, std::string type, int line=0, int column=0)
+                : token_(std::move(token)), type_(std::move(type)),
+                  line_(line), column_(column) {}
 
         static void AddTokenType(std::string name, int number) {
             token_types_.insert({number, std::move(name)});
@@ -28,8 +29,8 @@ namespace Ccompiler {
          *
          * @return
          */
-        bool IsValidToken() {
-            return !token_.empty();
+        bool IsEmptyToken() {
+            return token_.empty();
         }
 
         // TODO(dxy): see TODO in lex/lex.h line 42
@@ -50,6 +51,26 @@ namespace Ccompiler {
             return type_;
         }
 
+        [[nodiscard]] int GetLine() const {
+            return line_;
+        }
+
+        [[nodiscard]] int GetColumn() const {
+            return column_;
+        }
+
+        void SetLine(int line) {
+            line_ = line;
+        }
+
+        void SetColumn(int column) {
+            column_ = column;
+        }
+
+        void SetToken(const std::string &token) {
+            token_ = token;
+        }
+
     private:
         // map a number to a token type name
         static std::map<int, std::string> token_types_;
@@ -63,6 +84,9 @@ namespace Ccompiler {
 
         std::string token_;  // the matched string
         std::string type_;  // regex type name
+        // record token location in the source file
+        int line_;
+        int column_;
     };
 }
 
