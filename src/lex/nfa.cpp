@@ -387,9 +387,9 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
                 exchange_map_.erase(right_nfa.begin_state_number_);
             } else if (ast_head->regex_ == "*") {
                 /**
-                * Add an empty edge from 'left_nfa''s accept state to begin state
-                * to represent repeat several times.
-                */
+                 * Add an empty edge from 'left_nfa''s accept state to begin
+                 * state to represent repeat several times.
+                 */
                 exchange_map_[left_nfa.accept_states_.cbegin()->first][0].push_back(
                         left_nfa.begin_state_number_);
 
@@ -409,11 +409,63 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
                 AddState(char_ranges.size() - 1);
                 exchange_map_[left_nfa.accept_states_.cbegin()->first][0].push_back(
                         i_ - 1);
+
                 /**
                  * Add an empty edge from new begin state to new accept state to
                  * represent repeat 0 time.
                  */
                 exchange_map_[begin_state_number_][0].push_back(i_ - 1);
+
+                accept_states_[i_ - 1] = {"", 0};
+            } else if (ast_head->regex_ == "?") {
+                /**
+                 * Add an empty edge from new begin state to 'left_nfa''s begin
+                 * state.
+                 */
+                AddState(char_ranges.size() - 1);
+                begin_state_number_ = i_ - 1;
+                exchange_map_[begin_state_number_][0].push_back(
+                        left_nfa.begin_state_number_);
+
+                /**
+                 * Add an empty edge from 'left_nfa''s accept state new to accept
+                 * state.
+                 */
+                AddState(char_ranges.size() - 1);
+                exchange_map_[left_nfa.accept_states_.cbegin()->first][0].push_back(
+                        i_ - 1);
+
+                /**
+                 * Add an empty edge from new begin state to new accept state to
+                 * represent repeat 0 time.
+                 */
+                exchange_map_[begin_state_number_][0].push_back(i_ - 1);
+
+                accept_states_[i_ - 1] = {"", 0};
+            } else if (ast_head->regex_ == "+") {
+                /**
+                 * Add an empty edge from 'left_nfa''s accept state to begin
+                 * state to represent repeat several times.
+                 */
+                exchange_map_[left_nfa.accept_states_.cbegin()->first][0].push_back(
+                        left_nfa.begin_state_number_);
+
+                /**
+                 * Add an empty edge from new begin state to 'left_nfa''s begin
+                 * state.
+                 */
+                AddState(char_ranges.size() - 1);
+                begin_state_number_ = i_ - 1;
+                exchange_map_[begin_state_number_][0].push_back(
+                        left_nfa.begin_state_number_);
+
+                /**
+                 * Add an empty edge from 'left_nfa''s accept state new to accept
+                 * state.
+                 */
+                AddState(char_ranges.size() - 1);
+                exchange_map_[left_nfa.accept_states_.cbegin()->first][0].push_back(
+                        i_ - 1);
 
                 accept_states_[i_ - 1] = {"", 0};
             }
@@ -678,6 +730,8 @@ LexType GetLexType(const string &lex) {
         case '|':
             return LexType::KOr;
         case '*':
+        case '+':
+        case '?':
             return LexType::kRepetition;
         case '(':
             return LexType::kNested;
