@@ -134,7 +134,7 @@ void Nfa::WriteNfa(const string &nfa_file_name) const {
 
 Token Nfa::NextToken(StrConstIt &begin, StrConstIt &end) {
     if (begin == end) {
-        return Token("", "");
+        return Token{};
     }
 
     vector<vector<int>> state_vec;
@@ -191,7 +191,7 @@ Token Nfa::NextToken(StrConstIt &begin, StrConstIt &end) {
     begin++;
 
     if (accept_states.empty()) {
-        return Token("", "");
+        return Token{};
     }
     // choose the accept state with the min priority
     int accept_state = accept_states[0];
@@ -201,7 +201,7 @@ Token Nfa::NextToken(StrConstIt &begin, StrConstIt &end) {
         }
     }
 
-    return Token(string(tmp, begin), GetStateType(accept_state));
+    return Token{string(tmp, begin), GetStateType(accept_state)};
 }
 
 string Nfa::GetStateType(int state) {

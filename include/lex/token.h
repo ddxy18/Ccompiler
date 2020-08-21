@@ -16,7 +16,8 @@ namespace Ccompiler {
 
     class Token {
     public:
-        Token(std::string token, std::string type, int line=0, int column=0)
+        explicit Token(std::string token = "", std::string type = "",
+                       int line = 0, int column = 0)
                 : token_(std::move(token)), type_(std::move(type)),
                   line_(line), column_(column) {}
 
