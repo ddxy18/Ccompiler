@@ -9,7 +9,7 @@
 #include "lex/lexer.h"
 #include "parser/parser.h"
 
-using namespace Ccompiler;
+using namespace CCompiler;
 using namespace std;
 
 map<string, int> Environment::symbol_map_;
@@ -77,4 +77,20 @@ void Environment::SymbolMapInit() {
         }
         symbol_map_.insert({symbol, i++});
     }
+}
+
+int Environment::IntSymbol(const string &symbol) {
+    auto it = symbol_map_.find(symbol);
+    if (it != symbol_map_.cend()) {
+        return it->second;
+    }
+    return kError;
+}
+
+string Environment::StrSymbol(int symbol) {
+    return std::find_if(symbol_map_.cbegin(),
+                        symbol_map_.cend(),
+                        [symbol](const auto &p) {
+                            return p.second == symbol;
+                        })->first;
 }

@@ -10,7 +10,9 @@
 #include <stack>
 #include <vector>
 
-using namespace Ccompiler;
+#include "environment.h"
+
+using namespace CCompiler;
 using namespace std;
 
 /**
@@ -47,13 +49,13 @@ string ParseCharacterClasses(const string &regex);
 LexType GetLexType(const string &lex);
 
 [[nodiscard]] bool
-PushAnd(stack<AstNodePtr> &op_stack, stack<AstNodePtr> &rpn_stack);
+PushAnd(stack<LexAstNodePtr> &op_stack, stack<LexAstNodePtr> &rpn_stack);
 
 [[nodiscard]] bool
-PushOr(stack<AstNodePtr> &op_stack, stack<AstNodePtr> &rpn_stack);
+PushOr(stack<LexAstNodePtr> &op_stack, stack<LexAstNodePtr> &rpn_stack);
 
 [[nodiscard]] bool
-PushRepetition(stack<AstNodePtr> &op_stack, stack<AstNodePtr> &rpn_stack,
+PushRepetition(stack<LexAstNodePtr> &op_stack, stack<LexAstNodePtr> &rpn_stack,
                const string &regex);
 
 int Nfa::i_ = 0;
@@ -79,12 +81,14 @@ Nfa::Nfa(std::vector<Nfa> nfa_vec) :
     }
 }
 
-Nfa::Nfa(const string &regex, const string &regex_type, int priority) {
+Nfa::Nfa(const string &regex, int regex_type, int priority) {
     auto char_ranges = CharRangesInit(vector<string>());
     *this = Nfa(ParseRegex(regex), char_ranges);
-    char_ranges_ = std::move(char_ranges);
-    accept_states_[accept_states_.cbegin()->first] =
-            std::move(make_pair(regex_type, priority));
+    if (!IsEmptyNfa()){
+        char_ranges_ = std::move(char_ranges);
+        accept_states_[accept_states_.cbegin()->first] =
+                std::move(make_pair(regex_type, priority));
+    }
 }
 
 Nfa &Nfa::operator+=(Nfa &nfa) {
@@ -94,8 +98,8 @@ Nfa &Nfa::operator+=(Nfa &nfa) {
     return *this;
 }
 
-Nfa Nfa::ReadNfa(const string &nfa_file_name) {
-    ifstream in(nfa_file_name);
+Nfa Nfa::ReadNfa(const string &nfa_file) {
+    ifstream in(nfa_file);
 
     if (in) {
         Nfa nfa;
@@ -123,8 +127,8 @@ vector<int> Nfa::CharRangesInit(const vector<string> &delim) {
     // TODO(dxy): see TODO in lex/lex.h line 29
 }
 
-void Nfa::WriteNfa(const string &nfa_file_name) const {
-    ofstream out(nfa_file_name);
+void Nfa::WriteNfa(const string &nfa_file) const {
+    ofstream out(nfa_file);
 
     if (out) {
         out << *this;
@@ -178,9 +182,8 @@ Token Nfa::NextToken(StrConstIt &begin, StrConstIt &end) {
     auto reverse_it = state_vec.rbegin();
     // find the last vector that contains accept states
     while (reverse_it != state_vec.rend() && accept_states.empty()) {
-        string regex_type;
         for (auto cur_state:*reverse_it) {
-            if (!(regex_type = GetStateType(cur_state)).empty()) {
+            if (GetStateType(cur_state) != kEmpty) {
                 accept_states.push_back(cur_state);
             }
         }
@@ -204,15 +207,15 @@ Token Nfa::NextToken(StrConstIt &begin, StrConstIt &end) {
     return Token{string(tmp, begin), GetStateType(accept_state)};
 }
 
-string Nfa::GetStateType(int state) {
+int Nfa::GetStateType(int state) {
     auto result = accept_states_.find(state);
     if (result != accept_states_.end()) {
         return result->second.first;
     }
-    return "";
+    return 0;
 }
 
-ostream &Ccompiler::operator<<(ostream &os, const Nfa &nfa) {
+ostream &CCompiler::operator<<(ostream &os, const Nfa &nfa) {
     // empty NFA object
     if (nfa.exchange_map_.empty() || nfa.accept_states_.empty()) {
         return os;
@@ -255,7 +258,7 @@ ostream &Ccompiler::operator<<(ostream &os, const Nfa &nfa) {
     return os;
 }
 
-istream &Ccompiler::operator>>(istream &is, Nfa &nfa) {
+istream &CCompiler::operator>>(istream &is, Nfa &nfa) {
     string line;
 
     // detect whether read from a valid NFA istream
@@ -307,19 +310,19 @@ istream &Ccompiler::operator>>(istream &is, Nfa &nfa) {
     istringstream line_stream(line);
     while (line_stream >> s) {
         istringstream acpt_states_stream(s);
-        string str_state_number, reg_type_name, reg_priority;
+        string str_state_number, reg_type, reg_priority;
 
         getline(acpt_states_stream, str_state_number, ',');
-        getline(acpt_states_stream, reg_type_name, ',');
+        getline(acpt_states_stream, reg_type, ',');
         getline(acpt_states_stream, reg_priority, ',');
         nfa.accept_states_[stoi(str_state_number)] =
-                {reg_type_name, stoi(reg_priority)};
+                {stoi(reg_type), stoi(reg_priority)};
     }
 
     return is;
 }
 
-Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
+Nfa::Nfa(LexAstNodePtr ast_head, vector<int> &char_ranges) {
     if (ast_head) {
         Nfa left_nfa(std::move(ast_head->left_son_), char_ranges);
         Nfa right_nfa(std::move(ast_head->right_son_), char_ranges);
@@ -333,7 +336,7 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
             AddState(char_ranges.size() - 1);
             exchange_map_[i_ - 2][GetCharLocation(
                     ast_head->regex_[0], char_ranges)].push_back(i_ - 1);
-            accept_states_[i_ - 1] = {"", 0};
+            accept_states_[i_ - 1] = {0, 0};
         } else {
             // TODO(dxy): support more operators and characters
             if (ast_head->regex_ == "|") {
@@ -360,7 +363,7 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
                 exchange_map_[right_nfa.accept_states_.cbegin()->first][0].push_back(
                         i_ - 1);
 
-                accept_states_[i_ - 1] = {"", 0};
+                accept_states_[i_ - 1] = {0, 0};
             } else if (ast_head->regex_ == "&") {
                 /**
                 * Combine 'left_nfa''s accept state and 'right_nfa''s begin
@@ -368,7 +371,7 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
                 */
                 begin_state_number_ = left_nfa.begin_state_number_;
                 accept_states_[right_nfa.accept_states_.cbegin()->first] =
-                        {"", 0};
+                        {0, 0};
 
                 /**
                  * Copy 'right_nfa''s begin state edges to 'left_nfa''s accept
@@ -416,7 +419,7 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
                  */
                 exchange_map_[begin_state_number_][0].push_back(i_ - 1);
 
-                accept_states_[i_ - 1] = {"", 0};
+                accept_states_[i_ - 1] = {0, 0};
             } else if (ast_head->regex_ == "?") {
                 /**
                  * Add an empty edge from new begin state to 'left_nfa''s begin
@@ -441,7 +444,7 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
                  */
                 exchange_map_[begin_state_number_][0].push_back(i_ - 1);
 
-                accept_states_[i_ - 1] = {"", 0};
+                accept_states_[i_ - 1] = {0, 0};
             } else if (ast_head->regex_ == "+") {
                 /**
                  * Add an empty edge from 'left_nfa''s accept state to begin
@@ -467,19 +470,19 @@ Nfa::Nfa(AstNodePtr ast_head, vector<int> &char_ranges) {
                 exchange_map_[left_nfa.accept_states_.cbegin()->first][0].push_back(
                         i_ - 1);
 
-                accept_states_[i_ - 1] = {"", 0};
+                accept_states_[i_ - 1] = {0, 0};
             }
         }
     }
 }
 
-AstNodePtr Nfa::ParseRegex(const string &regex) {
-    stack<AstNodePtr> op_stack;
-    stack<AstNodePtr> rpn_stack;
+LexAstNodePtr Nfa::ParseRegex(const string &regex) {
+    stack<LexAstNodePtr> op_stack;
+    stack<LexAstNodePtr> rpn_stack;
     string lex;
     auto cur_it = regex.cbegin(), end = regex.cend();
     bool or_flag = true;  // records whether the last lex is '|'
-    AstNodePtr son;
+    LexAstNodePtr son;
 
     while (!(lex = NextTokenInRegex(cur_it, end)).empty()) {
         switch (GetLexType(lex)) {
@@ -506,13 +509,13 @@ AstNodePtr Nfa::ParseRegex(const string &regex) {
                 }
 
                 if (lex.size() == 1) {  // individual character
-                    rpn_stack.push(make_unique<AstNode>(lex));
+                    rpn_stack.push(make_unique<LexAstNode>(lex));
                 } else {  // [...] and escape character
                     auto s = ParseCharacterClasses(lex);
                     if (s == lex) {
                         rpn_stack.push(
-                                make_unique<AstNode>(string(lex.cbegin() + 1,
-                                                            lex.cend())));
+                                make_unique<LexAstNode>(string(lex.cbegin() + 1,
+                                                               lex.cend())));
                     } else {
                         son = ParseRegex(s);
                         rpn_stack.push(std::move(son));
@@ -740,7 +743,7 @@ LexType GetLexType(const string &lex) {
     }
 }
 
-bool PushAnd(stack<AstNodePtr> &op_stack, stack<AstNodePtr> &rpn_stack) {
+bool PushAnd(stack<LexAstNodePtr> &op_stack, stack<LexAstNodePtr> &rpn_stack) {
     while (!op_stack.empty() && op_stack.top()->GetRegex() != "|") {
         if (op_stack.top()->GetRegex() == "&") {
             if (rpn_stack.size() < 2) {
@@ -760,12 +763,12 @@ bool PushAnd(stack<AstNodePtr> &op_stack, stack<AstNodePtr> &rpn_stack) {
         rpn_stack.push(std::move(op_stack.top()));
         op_stack.pop();
     }
-    op_stack.push(make_unique<AstNode>("&"));
+    op_stack.push(make_unique<LexAstNode>("&"));
 
     return true;
 }
 
-bool PushOr(stack<AstNodePtr> &op_stack, stack<AstNodePtr> &rpn_stack) {
+bool PushOr(stack<LexAstNodePtr> &op_stack, stack<LexAstNodePtr> &rpn_stack) {
     while (!op_stack.empty()) {
         if (op_stack.top()->GetRegex() == "&" ||
             op_stack.top()->GetRegex() == "|") {
@@ -786,13 +789,14 @@ bool PushOr(stack<AstNodePtr> &op_stack, stack<AstNodePtr> &rpn_stack) {
         rpn_stack.push(std::move(op_stack.top()));
         op_stack.pop();
     }
-    op_stack.push(make_unique<AstNode>("|"));
+    op_stack.push(make_unique<LexAstNode>("|"));
 
     return true;
 }
 
-bool PushRepetition(stack<AstNodePtr> &op_stack, stack<AstNodePtr> &rpn_stack,
-                    const string &regex) {
+bool
+PushRepetition(stack<LexAstNodePtr> &op_stack, stack<LexAstNodePtr> &rpn_stack,
+               const string &regex) {
     while (!op_stack.empty() && op_stack.top()->GetRegex() != "|" &&
            op_stack.top()->GetRegex() != "&") {
         if (rpn_stack.empty()) {
@@ -803,7 +807,7 @@ bool PushRepetition(stack<AstNodePtr> &op_stack, stack<AstNodePtr> &rpn_stack,
         rpn_stack.push(std::move(op_stack.top()));
         op_stack.pop();
     }
-    op_stack.push(make_unique<AstNode>(regex));
+    op_stack.push(make_unique<LexAstNode>(regex));
 
     return true;
 }

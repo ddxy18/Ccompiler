@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <map>
 
-namespace Ccompiler {
+namespace CCompiler {
     /**
      * Special terminal symbols. THey are useful in syntax analysis.
      */
@@ -28,21 +28,9 @@ namespace Ccompiler {
         explicit Environment(std::string lex_file, std::string nfa_file,
                              std::string grammar_file);
 
-        static int IntSymbol(const std::string &symbol) {
-            auto it = symbol_map_.find(symbol);
-            if (it != symbol_map_.cend()) {
-                return it->second;
-            }
-            return kError;
-        }
+        static int IntSymbol(const std::string &symbol);
 
-        static std::string StrSymbol(int symbol) {
-            return std::find_if(symbol_map_.cbegin(),
-                                symbol_map_.cend(),
-                                [symbol](const auto &p) {
-                                    return p.second == symbol;
-                                })->first;
-        }
+        static std::string StrSymbol(int symbol);
 
     private:
         /**

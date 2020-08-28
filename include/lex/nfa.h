@@ -14,10 +14,10 @@
 
 #include "token.h"
 
-namespace Ccompiler {
-    class AstNode;
+namespace CCompiler {
+    class LexAstNode;
 
-    using AstNodePtr = std::unique_ptr<AstNode>;
+    using LexAstNodePtr = std::unique_ptr<LexAstNode>;
     using StrConstIt = std::string::const_iterator;
 
     class Nfa {
@@ -46,18 +46,7 @@ namespace Ccompiler {
          * @param regex
          * @param regex_type
          */
-        Nfa(const std::string &regex, const std::string &regex_type,
-            int priority);
-
-        /**
-         * Add edges and states stored in 'nfa.exchange_map_' to
-         * 'this->exchange_map_'.
-         *
-         * @param nfa After calling the function, 'nfa.exchange_map_' turns
-         * to unknown states and should never be accessed.
-         * @return
-         */
-        Nfa &operator+=(Nfa &nfa);
+        Nfa(const std::string &regex, int regex_type, int priority);
 
         /**
          * Read an NFA from a file named 'nfa_file_name'. NFA is stored in
@@ -66,10 +55,10 @@ namespace Ccompiler {
          * this file should be generated from 'WriteNfa(std::string)' to
          * ensure its valid format.
          *
-         * @param nfa_file_name
+         * @param nfa_file
          * @return
          */
-        static Nfa ReadNfa(const std::string &nfa_file_name);
+        static Nfa ReadNfa(const std::string &nfa_file);
 
         /**
          * Use 'delim' to split an alphabet table to several ranges. By
@@ -81,7 +70,7 @@ namespace Ccompiler {
         static std::vector<int> CharRangesInit(
                 const std::vector<std::string> &delim);
 
-        void WriteNfa(const std::string &nfa_file_name) const;
+        void WriteNfa(const std::string &nfa_file) const;
 
         /**
          * // TODO(dxy): modify function description
@@ -99,11 +88,10 @@ namespace Ccompiler {
         /**
          *
          * @param state state number
-         * @return If 'state' is an accept state, return its type name in
-         * 'accept_states_'. If 'state' is an intermediate state, return an
-         * empty string.
+         * @return If 'state' is an accept state, return its type number. If
+         * 'state' is an intermediate state, return 0.
          */
-        std::string GetStateType(int state);
+        int GetStateType(int state);
 
         bool IsEmptyNfa() {
             return accept_states_.empty();
@@ -116,7 +104,17 @@ namespace Ccompiler {
          *
          * @param ast_head can be nullptr
          */
-        Nfa(AstNodePtr ast_head, std::vector<int> &char_ranges);
+        Nfa(LexAstNodePtr ast_head, std::vector<int> &char_ranges);
+
+        /**
+         * Add edges and states stored in 'nfa.exchange_map_' to
+         * 'this->exchange_map_'.
+         *
+         * @param nfa After calling the function, 'nfa.exchange_map_' turns
+         * to unknown states and should never be accessed.
+         * @return
+         */
+        Nfa &operator+=(Nfa &nfa);
 
         /**
          * Parse a regex string to an AST. We assume that regex can only
@@ -134,7 +132,7 @@ namespace Ccompiler {
          * @return If 'regex' is in valid format, return an pointer to the head
          * of AST. Otherwise return 'nullptr'.
          */
-        static AstNodePtr ParseRegex(const std::string &regex);
+        static LexAstNodePtr ParseRegex(const std::string &regex);
 
         /**
          * Get all reachable states starting from 'cur_state' through '*cur_it'.
@@ -173,7 +171,7 @@ namespace Ccompiler {
          * @param char_ranges
          * @return If 'c' is in range i, return 'char_ranges[i]'.
          */
-        static int GetCharLocation(char c, const std::vector<int>  &char_ranges);
+        static int GetCharLocation(char c, const std::vector<int> &char_ranges);
 
         /**
          * Record several continuous character ranges. Range i refers to
@@ -204,34 +202,34 @@ namespace Ccompiler {
          * states.
          *
          * pair.first -- state number
-         * pair.second.first -- regex type
-         * pair.second.second -- regex priority
+         * pair.second.first -- terminal symbol type
+         * pair.second.second -- terminal symbol priority
          */
-        std::map<int, std::pair<std::string, int>> accept_states_;
+        std::map<int, std::pair<int, int>> accept_states_;
     };
 
-    class AstNode {
+    class LexAstNode {
         friend class Nfa;
 
     public:
-        explicit AstNode(std::string regex) : regex_(std::move(regex)) {}
+        explicit LexAstNode(std::string regex) : regex_(std::move(regex)) {}
 
-        void SetLeftSon(std::unique_ptr<AstNode> left_son) {
+        void SetLeftSon(LexAstNodePtr left_son) {
             left_son_ = std::move(left_son);
         }
 
-        void SetRightSon(std::unique_ptr<AstNode> right_son) {
+        void SetRightSon(LexAstNodePtr right_son) {
             right_son_ = std::move(right_son);
         }
 
-        [[nodiscard]] const std::string &GetRegex() const {
+        std::string GetRegex() {
             return regex_;
         }
 
     private:
         std::string regex_;
-        std::unique_ptr<AstNode> left_son_;
-        std::unique_ptr<AstNode> right_son_;
+        LexAstNodePtr left_son_;
+        LexAstNodePtr right_son_;
     };
 
     std::ostream &operator<<(std::ostream &os, const Nfa &nfa);

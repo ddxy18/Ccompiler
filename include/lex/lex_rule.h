@@ -12,9 +12,9 @@
 
 #include "lex/nfa.h"
 
-namespace Ccompiler {
+namespace CCompiler {
     class LexRule {
-        friend Nfa NfaInit(const std::string &lex_file_name);
+        friend Nfa CreateNfa(const std::string &lex_file_name);
 
     public:
         LexRule(int priority, std::string name, std::string regex) :
@@ -28,7 +28,7 @@ namespace Ccompiler {
          */
         // TODO(dxy): It's used to split an alphabet table. Now we only
         //  support that every character is seen as a range.
-//        std::vector<std::string> GetCharaters();
+//        std::vector<std::string> GetCharacters();
 
     private:
         /**
@@ -61,7 +61,7 @@ namespace Ccompiler {
      * lex.
      * @return
      */
-    Nfa NfaInit(const std::string &lex_file_name);
+    Nfa CreateNfa(const std::string &lex_file_name);
 }
 
 #endif //CCOMPILER_LEX_RULE_H

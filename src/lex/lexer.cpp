@@ -4,10 +4,14 @@
 
 #include "lex/lexer.h"
 
-using namespace Ccompiler;
+#include "environment.h"
+
+using namespace CCompiler;
 using namespace std;
 
-Token Lexer::NextToken(Nfa &nfa) {
+Nfa Lexer::nfa_;
+
+Token Lexer::NextToken() {
     static string line;
     static auto begin = line.cbegin(), end = line.cend();
     static bool line_flag = true;  // whether to read a new word from the file
@@ -19,7 +23,7 @@ Token Lexer::NextToken(Nfa &nfa) {
                 column_ = 0;
                 line_flag = false;
                 begin = line.cbegin(), end = line.cend();
-                Token token = NextTokenInLine(begin, end, nfa);
+                Token token = NextTokenInLine(begin, end, nfa_);
                 if (!token.IsEmptyToken()) {
                     return token;
                 }
@@ -27,7 +31,7 @@ Token Lexer::NextToken(Nfa &nfa) {
 
             return Token{};  // reach to the end of the file
         } else {
-            Token token = NextTokenInLine(begin, end, nfa);
+            Token token = NextTokenInLine(begin, end, nfa_);
             if (token.IsEmptyToken()) {  // reach to the end of a line
                 line_flag = true;
                 continue;
@@ -37,8 +41,7 @@ Token Lexer::NextToken(Nfa &nfa) {
     }
 }
 
-Token Lexer::NextTokenInLine(
-        string::const_iterator &begin, string::const_iterator &end, Nfa &nfa) {
+Token Lexer::NextTokenInLine(StrConstIt &begin, StrConstIt &end, Nfa &nfa) {
     static bool comment_flag = false;  // used to skip /**/ comments
 
     while (begin != end) {
@@ -55,10 +58,11 @@ Token Lexer::NextTokenInLine(
             continue;
         }
 
-        if (token.GetType() == "string") {
+        if (token.GetType() == Environment::IntSymbol("string") ||
+            token.GetType() == Environment::IntSymbol("character")) {
             auto tmp = begin - 1;
             while (begin != end) {
-                if (*begin == '\"' && *(begin - 1) != '\\') {
+                if (*begin == token.GetToken()[0] && *(begin - 1) != '\\') {
                     begin++;
                     token.SetToken(string(tmp, begin));
                     token.SetLine(line_);
@@ -68,27 +72,14 @@ Token Lexer::NextTokenInLine(
                 }
                 begin++;
             }
-        } else if (token.GetType() == "character") {
-            auto tmp = begin - 1;
-            while (begin != end) {
-                if (*begin == '\'' && *(begin - 1) != '\\') {
-                    begin++;
-                    token.SetToken(string(tmp, begin));
-                    token.SetLine(line_);
-                    token.SetColumn(column_);
-                    column_ += begin - tmp;
-                    return token;
-                }
-                begin++;
-            }
-        } else if (token.GetType() == "comment") {
+        } else if (token.GetType() == Environment::IntSymbol("comment")) {
             if (token.GetToken() == "//") {  // skip the line
                 begin = end;
             } else if (token.GetToken() == "/*") {
                 comment_flag = true;
                 column_ += token.GetToken().size();
             }
-        } else if (token.GetType() == "delim") {
+        } else if (token.GetType() == Environment::IntSymbol("delim")) {
             column_ += token.GetToken().size();
         } else {
             token.SetLine(line_);

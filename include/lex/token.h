@@ -9,21 +9,13 @@
 #include <memory>
 #include <string>
 
-namespace Ccompiler {
-    class Token;
-
-    using TokenPtr = std::unique_ptr<Token>;
-
+namespace CCompiler {
     class Token {
     public:
-        explicit Token(std::string token = "", std::string type = "",
-                       int line = 0, int column = 0)
-                : token_(std::move(token)), type_(std::move(type)),
-                  line_(line), column_(column) {}
-
-        static void AddTokenType(std::string name, int number) {
-            token_types_.insert({number, std::move(name)});
-        }
+        explicit Token(std::string token = "", int type = 0,
+                       int line = 0, int column = 0) :
+                token_(std::move(token)), type_(type),
+                line_(line), column_(column) {}
 
         /**
          * Check 'Token.token_' to determine whether it's a valid token.
@@ -48,7 +40,7 @@ namespace Ccompiler {
             return token_;
         }
 
-        [[nodiscard]] const std::string &GetType() const {
+        [[nodiscard]] int GetType() const {
             return type_;
         }
 
@@ -73,9 +65,6 @@ namespace Ccompiler {
         }
 
     private:
-        // map a number to a token type name
-        static std::map<int, std::string> token_types_;
-
         // TODO(dxy):see TODO in lex/lex.h line 42
         /**
          * Map a regex type name to a function pointer which is executed
@@ -84,7 +73,7 @@ namespace Ccompiler {
 //        static std::map<std::string, int (*)()> reg_to_action_;
 
         std::string token_;  // the matched string
-        std::string type_;  // regex type name
+        int type_;  // terminal symbol type
         // record token location in the source file
         int line_;
         int column_;

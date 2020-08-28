@@ -8,7 +8,9 @@
 #include <string>
 #include <vector>
 
-using namespace Ccompiler;
+#include "environment.h"
+
+using namespace CCompiler;
 using namespace std;
 
 // TODO(dxy): realise it
@@ -71,7 +73,7 @@ vector<pair<int, int>> SplitAlphabetTable(
 //    return str_vec;
 //}
 
-Nfa Ccompiler::NfaInit(const string &lex_file_name) {
+Nfa CCompiler::CreateNfa(const string &lex_file_name) {
     ifstream lex_file_stream(lex_file_name);
     string line;
 
@@ -87,8 +89,7 @@ Nfa Ccompiler::NfaInit(const string &lex_file_name) {
             getline(line_stream, regex_rule);
             regex_rule.erase(regex_rule.cbegin());
             // use sequences in lex files to determine regex rule's priority
-            lex_rules.emplace_back(sequence, regex_name, regex_rule);
-            Token::AddTokenType(regex_name, sequence++);
+            lex_rules.emplace_back(sequence++, regex_name, regex_rule);
         }
 
         // TODO(dxy): parse regex actions, see TODO in lex/lex.h line 42
@@ -98,8 +99,9 @@ Nfa Ccompiler::NfaInit(const string &lex_file_name) {
         vector<Nfa> regex_nfa;
         regex_nfa.reserve(lex_rules.size());
         for (auto &lex_rule:lex_rules) {
-            regex_nfa.emplace_back(
-                    lex_rule.regex_, lex_rule.name_, lex_rule.priority_);
+            regex_nfa.emplace_back(lex_rule.regex_,
+                                   Environment::IntSymbol(lex_rule.name_),
+                                   lex_rule.priority_);
             if (regex_nfa[regex_nfa.size() - 1].IsEmptyNfa()) {
                 return Nfa();
             }
