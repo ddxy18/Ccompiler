@@ -166,7 +166,7 @@ namespace CCompiler {
          * @param encoding
          */
         void CharRangesInit(
-                const std::vector<std::string> &delim, Encoding encoding);
+                const std::set<std::string> &delim, Encoding encoding);
 
         /**
          * Find which character range in the char_ranges_ c is in.

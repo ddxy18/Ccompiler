@@ -25,7 +25,7 @@ int Nfa::i_ = 0;
  */
 RegexPart GetRegexType(const string &regex);
 
-vector<string> GetDelim(const string &regex);
+set<string> GetDelim(const string &regex);
 
 /**
  * It finds one token a time and sets 'begin' to the head of the next token.
@@ -240,14 +240,22 @@ Nfa::StateType Nfa::GetStateType(int state) {
     return StateType::kCommon;
 }
 
-vector<string> GetDelim(const string &regex) {
+set<string> GetDelim(const string &regex) {
     auto begin = regex.cbegin(), end = regex.cend();
-    vector<string> delim;
+    set<string> delim;
     string token;
 
     while (!(token = NextTokenInRegex(begin, end)).empty()) {
-        if (GetRegexType(token) == RegexPart::kChar) {
-            delim.push_back(token);
+        switch (GetRegexType(token)) {
+            case RegexPart::kChar:
+                delim.insert(token);
+                break;
+            case RegexPart::kPassiveGroup:
+                delim.merge(
+                        GetDelim(string{token.cbegin() + 3, token.cend() - 1}));
+                break;
+            default:
+                break;
         }
     }
 
@@ -267,7 +275,7 @@ Nfa &Nfa::operator+=(Nfa &nfa) {
     return *this;
 }
 
-void Nfa::CharRangesInit(const vector<string> &delim, Encoding encoding) {
+void Nfa::CharRangesInit(const set<string> &delim, Encoding encoding) {
     set<unsigned int> char_ranges;
 
     // determine encode range
@@ -321,25 +329,27 @@ int Nfa::GetCharLocation(int c) {
  */
 Nfa::Nfa(const map<string, int> &regex_rules) {
     // initialize char_ranges_
-    string regex;
-    for (auto &regex_rule:regex_rules) {
-        regex += regex_rule.first + "|";
-    }
-    regex.erase(regex.cend() - 1);
-    auto delim = GetDelim(regex);
-    // TODO(dxy): determine encoding according characters in 'regex'
-    CharRangesInit(delim, Encoding::kAscii);
+    if (!regex_rules.empty()) {
+        string regex;
+        for (auto &regex_rule:regex_rules) {
+            regex += regex_rule.first + "|";
+        }
+        regex.erase(regex.cend() - 1);
+        auto delim = GetDelim(regex);
+        // TODO(dxy): determine encoding according characters in 'regex'
+        CharRangesInit(delim, Encoding::kAscii);
 
-    NewState();  // begin state
-    begin_state_ = i_;
+        NewState();  // begin state
+        begin_state_ = i_;
 
-    for (auto &regex_rule:regex_rules) {
-        Nfa nfa{regex_rule.first, regex_rule.second, char_ranges_};
-        *this += nfa;
-        // copy the only accept state in nfa
-        this->accept_states_.merge(nfa.accept_states_);
-        // add an empty edge to nfa's begin state
-        exchange_map_[begin_state_][0].insert(nfa.begin_state_);
+        for (auto &regex_rule:regex_rules) {
+            Nfa nfa{regex_rule.first, regex_rule.second, char_ranges_};
+            *this += nfa;
+            // copy the only accept state in nfa
+            this->accept_states_.merge(nfa.accept_states_);
+            // add an empty edge to nfa's begin state
+            exchange_map_[begin_state_][0].insert(nfa.begin_state_);
+        }
     }
 }
 
