@@ -9,7 +9,25 @@
 using namespace CCompiler;
 using namespace std;
 
-Nfa Lexer::nfa_;
+Nfa Lexer::nfa_{map<string, int>{}};
+
+Token Lexer::Next() {
+    if (tokens_.empty()) {
+        return NextToken();
+    } else {
+        auto token = tokens_.back();
+        tokens_.pop();
+        return token;
+    }
+}
+
+Token Lexer::Peek() {
+    auto token = NextToken();
+    if(!token.IsEmptyToken()){
+        tokens_.push(token);
+    }
+    return token;
+}
 
 Token Lexer::NextToken() {
     static string line;
@@ -23,7 +41,7 @@ Token Lexer::NextToken() {
                 column_ = 0;
                 line_flag = false;
                 begin = line.cbegin(), end = line.cend();
-                Token token = NextTokenInLine(begin, end, nfa_);
+                Token token = NextTokenInLine(begin, end);
                 if (!token.IsEmptyToken()) {
                     return token;
                 }
@@ -31,7 +49,7 @@ Token Lexer::NextToken() {
 
             return Token{};  // reach to the end of the file
         } else {
-            Token token = NextTokenInLine(begin, end, nfa_);
+            Token token = NextTokenInLine(begin, end);
             if (token.IsEmptyToken()) {  // reach to the end of a line
                 line_flag = true;
                 continue;
@@ -41,15 +59,19 @@ Token Lexer::NextToken() {
     }
 }
 
-Token Lexer::NextTokenInLine(StrConstIt &begin, StrConstIt &end, Nfa &nfa) {
+Token Lexer::NextTokenInLine(StrConstIt &begin, StrConstIt &end) {
     static bool comment_flag = false;  // used to skip /**/ comments
 
     while (begin != end) {
-        Token token = nfa.NextToken(begin, end);
-        if (token.IsEmptyToken()) {  // skip invalid tokens
+        auto pair = nfa_.NextMatch(begin, end);
+        if (pair == nullptr || begin == pair->second) {  // invalid token
+            // ignore the current character to find the next valid token
+            begin++;
             continue;
         }
 
+        Token token{string{begin, pair->second}, pair->first};
+        begin = pair->second;
         if (comment_flag) {
             if (token.GetToken() == "*/") {
                 comment_flag = false;
