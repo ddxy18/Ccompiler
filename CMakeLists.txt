@@ -1,14 +1,19 @@
 cmake_minimum_required(VERSION 3.16)
-project(Ccompiler)
+project(CCompiler)
 
 set(CMAKE_CXX_STANDARD 20)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=leak")
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(include)
 
-add_subdirectory(test)
-
-add_executable(Ccompiler src/main.cpp src/lex/token.cpp src/lex/nfa.cpp src/lex/lex.cpp src/main.cpp)
+add_executable(CCompiler src/main.cpp)
 
 # for temporary experiments
-add_executable(CcompilerTemp temp/temp.cpp)
+add_executable(CCompilerTemp temp/temp.cpp)
+
+add_subdirectory(GoogleTest GoogleTest)
+add_subdirectory(src)
+add_subdirectory(test)
+
+target_link_libraries(CCompiler CCompilerLib)

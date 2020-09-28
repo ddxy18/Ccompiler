@@ -13,8 +13,7 @@ using namespace std;
 class CCompilerEnvironment : public ::testing::Environment {
 public:
     void SetUp() override {
-        CCompiler::Environment env{
-                "/mnt/e/cs_learning/project/CCompiler/test/lex/lex.txt"};
+        CCompiler::Environment::EnvironmentInit();
     }
 };
 
