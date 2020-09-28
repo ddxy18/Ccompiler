@@ -18,23 +18,13 @@ namespace CCompiler {
                 line_(line), column_(column) {}
 
         /**
-         * Check 'Token.token_' to determine whether it's a valid token.
+         * Check token_ to determine whether it's a valid token.
          *
          * @return
          */
-        bool IsEmptyToken() {
+        bool Empty() {
             return token_.empty();
         }
-
-        // TODO(dxy): see TODO in lex/lex.h line 42
-//        static void AddType(std::string name, int (*)());
-
-        // TODO(dxy): see TODO in lex/lex.h line 42
-        /**
-         * Execute a function corresponding to 'reg_type_' to do some
-         * additional work(e.g. set 'lex_type_').
-         */
-//        void ExecTokenAction();
 
         [[nodiscard]] std::string GetToken() {
             return token_;
@@ -65,13 +55,6 @@ namespace CCompiler {
         }
 
     private:
-        // TODO(dxy):see TODO in lex/lex.h line 42
-        /**
-         * Map a regex type name to a function pointer which is executed
-         * after finding a token.
-         */
-//        static std::map<std::string, int (*)()> reg_to_action_;
-
         std::string token_;  // the matched string
         int type_;  // terminal symbol type
         // record token location in the source file
@@ -80,4 +63,4 @@ namespace CCompiler {
     };
 }
 
-#endif //CCOMPILER_TOKEN_H
+#endif // CCOMPILER_TOKEN_H

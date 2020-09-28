@@ -25,7 +25,7 @@ void NextStream(queue<string> token_queue, stringbuf buffer) {
     Lexer lexer{buffer};
     Token token;
 
-    while (!(token = lexer.Next()).IsEmptyToken()) {
+    while (!(token = lexer.Next()).Empty()) {
         EXPECT_EQ(token.GetToken(), token_queue.front());
         token_queue.pop();
     }
@@ -35,7 +35,7 @@ void PeekStream(queue<string> token_queue, stringbuf buffer) {
     Lexer lexer{buffer};
     Token token;
 
-    while (!(token = lexer.Peek()).IsEmptyToken()) {
+    while (!(token = lexer.Peek()).Empty()) {
         EXPECT_EQ(token.GetToken(), token_queue.front());
         token_queue.pop();
     }

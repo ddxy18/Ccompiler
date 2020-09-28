@@ -23,7 +23,7 @@ Token Lexer::Next() {
 
 Token Lexer::Peek() {
     auto token = NextToken();
-    if(!token.IsEmptyToken()){
+    if(!token.Empty()){
         tokens_.push(token);
     }
     return token;
@@ -42,7 +42,7 @@ Token Lexer::NextToken() {
                 line_flag = false;
                 begin = line.cbegin(), end = line.cend();
                 Token token = NextTokenInLine(begin, end);
-                if (!token.IsEmptyToken()) {
+                if (!token.Empty()) {
                     return token;
                 }
             }
@@ -50,7 +50,7 @@ Token Lexer::NextToken() {
             return Token{};  // reach to the end of the file
         } else {
             Token token = NextTokenInLine(begin, end);
-            if (token.IsEmptyToken()) {  // reach to the end of a line
+            if (token.Empty()) {  // reach to the end of a line
                 line_flag = true;
                 continue;
             }
