@@ -5,28 +5,19 @@
 #ifndef CCOMPILER_ENVIRONMENT_H
 #define CCOMPILER_ENVIRONMENT_H
 
-#include <algorithm>
 #include <map>
 
 namespace CCompiler {
-    /**
-     * Special terminal symbols. THey are useful in syntax analysis.
-     */
-    const int kError = -1;
-    const int kEmpty = 0;
-    const int kEnd = 1;
+    class Nfa;
 
     class Environment {
     public:
         /**
-         * Initialize 'terminal_symbol_map_' and NFA stores in 'Lexer'.
+         * Initialize symbol_map_ and NFA stores in Lexer.
          *
          * @param lex_file must exist
-         * @param nfa_file can be a nonexistent file
-         * @param grammar_file must exist
          */
-        explicit Environment(std::string lex_file, std::string nfa_file,
-                             std::string grammar_file);
+        explicit Environment(const std::string &lex_file);
 
         static int IntSymbol(const std::string &symbol);
 
@@ -34,30 +25,11 @@ namespace CCompiler {
 
     private:
         /**
-         * Initialize user-defined and reserved symbols.
-         */
-        void SymbolMapInit();
-
-        /**
-         * map symbol names to numbers
+         * map symbols from string to integer
          */
         static std::map<std::string, int> symbol_map_;
-
-        /**
-         * A file stores NFA for Lexer to use.
-         */
-        const std::string nfa_file_;
-        /**
-         * A file stores user-defined terminal symbols' regex rules.
-         */
-        const std::string lex_file_;
-
-        /**
-         * A file stores grammars for the language.
-         */
-        const std::string grammar_file_;
     };
 }
 
 
-#endif //CCOMPILER_ENVIRONMENT_H
+#endif // CCOMPILER_ENVIRONMENT_H
