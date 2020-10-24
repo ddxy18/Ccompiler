@@ -12,7 +12,10 @@ add_executable(CCompilerTest
         lex/lexer_test.cpp lex/nfa_test.cpp
         )
 
-target_link_libraries(CCompilerTest Lex)
+add_subdirectory(../src ../src)
+add_subdirectory(../GoogleTest ../GoogleTest)
+
+target_link_libraries(CCompilerTest CCompilerLib)
 target_link_libraries(CCompilerTest gtest_main)
 
 enable_testing()
