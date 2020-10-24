@@ -9,7 +9,7 @@
 using namespace CCompiler;
 using namespace std;
 
-Nfa Lexer::nfa_{map<string, int>()};
+Nfa Lexer::nfa_ = Nfa(map<string, int>());
 
 Token Lexer::Next() {
   if (tokens_.empty()) {
@@ -70,7 +70,7 @@ Token Lexer::NextTokenInLine(StrConstIt &begin, StrConstIt &end) {
       continue;
     }
 
-    Token token{string{begin, pair->second}, pair->first};
+    Token token(string{begin, pair->second}, pair->first);
     begin = pair->second;
     if (comment_flag) {
       if (token.GetToken() == "*/") {
