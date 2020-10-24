@@ -6,6 +6,7 @@
 #include "lex/lexer.h"
 
 #include "environment.h"
+#include "lex/token.h"
 
 using namespace CCompiler;
 using namespace std;

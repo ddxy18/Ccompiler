@@ -7,33 +7,19 @@
 
 #include <map>
 
-#include "lex/lexer.h"
-
 namespace CCompiler {
-    class Nfa;
+enum class TokenType;
 
-    class Environment {
-    public:
-        static void EnvironmentInit() {
-            Lexer::nfa_ = Nfa{regex_rules_};
-        }
+class Environment {
+ public:
+  static void EnvironmentInit();
 
-        static int IntSymbol(const std::string &symbol);
-
-        static std::string StrSymbol(int symbol);
-
-    private:
-        /**
-         * map symbols from string to integer
-         */
-        static std::map<std::string, int> symbol_map_;
-
-        /**
-         * map regex rules from string to integer
-         */
-        static std::map<std::string, int> regex_rules_;
-    };
+ private:
+  /**
+   * map regex rules from string to integer
+   */
+  static std::map<std::string, TokenType> regex_rules_;
+};
 }
-
 
 #endif // CCOMPILER_ENVIRONMENT_H

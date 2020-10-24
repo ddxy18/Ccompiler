@@ -4,12 +4,13 @@
 
 #include "gtest/gtest.h"
 #include "lex/nfa.h"
+#include "lex/token.h"
 
 using namespace CCompiler;
 using namespace std;
 
 TEST(Nfa, Alternative) {
-  Nfa nfa({{"a|b", -1}});
+  Nfa nfa({{"a|b", TokenType::kEmpty}});
   string s = "ab";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -25,7 +26,7 @@ TEST(Nfa, Alternative) {
 }
 
 TEST(Nfa, And) {
-  Nfa nfa({{"ab", -1}});
+  Nfa nfa({{"ab", TokenType::kEmpty}});
   string s = "abc";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -37,7 +38,7 @@ TEST(Nfa, And) {
 }
 
 TEST(Nfa, Range) {
-  Nfa nfa({{"[a-c]", -1}});
+  Nfa nfa({{"[a-c]", TokenType::kEmpty}});
   string s = "abc";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -57,7 +58,7 @@ TEST(Nfa, Range) {
 }
 
 TEST(Nfa, Quantifier_0Or1) {
-  Nfa nfa({{"[a-c]?", -1}});
+  Nfa nfa({{"[a-c]?", TokenType::kEmpty}});
   string s = "abc";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -78,7 +79,7 @@ TEST(Nfa, Quantifier_0Or1) {
 }
 
 TEST(Nfa, Quantifier_0OrMore) {
-  Nfa nfa({{"[a-c]*", -1}});
+  Nfa nfa({{"[a-c]*", TokenType::kEmpty}});
   string s = "abc";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -91,7 +92,7 @@ TEST(Nfa, Quantifier_0OrMore) {
 }
 
 TEST(Nfa, Quantifier_1OrMore) {
-  Nfa nfa{{{"[a-c]+", -1}}};
+  Nfa nfa{{{"[a-c]+", TokenType::kEmpty}}};
   string s = "abcd";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -103,7 +104,7 @@ TEST(Nfa, Quantifier_1OrMore) {
 }
 
 TEST(Nfa, Quantifier_Exact) {
-  Nfa nfa({{"[a-c]{2}", -1}});
+  Nfa nfa({{"[a-c]{2}", TokenType::kEmpty}});
   string s = "abcd";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -115,7 +116,7 @@ TEST(Nfa, Quantifier_Exact) {
 }
 
 TEST(Nfa, Quantifier_nOrMore) {
-  Nfa nfa({{"[a-c]{2,}", -1}});
+  Nfa nfa({{"[a-c]{2,}", TokenType::kEmpty}});
   string s = "abcd";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -127,7 +128,7 @@ TEST(Nfa, Quantifier_nOrMore) {
 }
 
 TEST(Nfa, Quantifier_mTon) {
-  Nfa nfa({{"[a-c]{2,4}", -1}});
+  Nfa nfa({{"[a-c]{2,4}", TokenType::kEmpty}});
   string s = "abcabd";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -139,7 +140,7 @@ TEST(Nfa, Quantifier_mTon) {
 }
 
 TEST(Nfa, PassiveGroup) {
-  Nfa nfa({{"(?:aa)ab", -1}});
+  Nfa nfa({{"(?:aa)ab", TokenType::kEmpty}});
   string s = "aaabc";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -151,7 +152,7 @@ TEST(Nfa, PassiveGroup) {
 }
 
 TEST(Nfa, EscapeCharacter) {
-  Nfa nfa({{"\\(a+\\)", -1}});
+  Nfa nfa({{"\\(a+\\)", TokenType::kEmpty}});
   string s = "(a)";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -163,7 +164,7 @@ TEST(Nfa, EscapeCharacter) {
 }
 
 TEST(Nfa, NotNewLine) {
-  Nfa nfa({{"...", -1}});
+  Nfa nfa({{"...", TokenType::kEmpty}});
   string s = "(a)";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -175,7 +176,7 @@ TEST(Nfa, NotNewLine) {
 }
 
 TEST(Nfa, SpecialPatternInRange) {
-  Nfa nfa({{"[\\w]", -1}});
+  Nfa nfa({{"[\\w]", TokenType::kEmpty}});
   string s = "a1";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -191,7 +192,7 @@ TEST(Nfa, SpecialPatternInRange) {
 }
 
 TEST(Nfa, ExceptRange) {
-  Nfa nfa({{"[^abc\\d]", -1}});
+  Nfa nfa({{"[^abc\\d]", TokenType::kEmpty}});
   string s = "d";
   auto begin = s.cbegin(), end = s.cend();
 
@@ -203,20 +204,20 @@ TEST(Nfa, ExceptRange) {
 }
 
 TEST(Nfa, InvalidRegex) {
-  Nfa nfa{{{"a|b|", -1}}};
+  Nfa nfa{{{"a|b|", TokenType::kEmpty}}};
   EXPECT_TRUE(nfa.Empty());
 }
 
 TEST(Nfa, MultiRegex) {
-  Nfa nfa({{"while",                  1},
-           {"[a-zA-Z_][a-zA-Z0-9_]*", 2}});
+  Nfa nfa({{"while",                  TokenType::kWhile},
+           {"[a-zA-Z_][a-zA-Z0-9_]*", TokenType::kIdentifier}});
 
   string s = "while";
   auto begin = s.cbegin(), end = s.cend();
 
   auto match = nfa.NextMatch(begin, end);
   EXPECT_EQ(string(begin, match->second), "while");
-  EXPECT_EQ(match->first, 1);
+  EXPECT_EQ(match->first, TokenType::kWhile);
 
   begin = match->second;
   EXPECT_EQ(nfa.NextMatch(begin, end), nullptr);
@@ -226,7 +227,7 @@ TEST(Nfa, MultiRegex) {
 
   match = nfa.NextMatch(begin, end);
   EXPECT_EQ(string(begin, match->second), "while1");
-  EXPECT_EQ(match->first, 2);
+  EXPECT_EQ(match->first, TokenType::kIdentifier);
 
   begin = match->second;
   EXPECT_EQ(nfa.NextMatch(begin, end), nullptr);

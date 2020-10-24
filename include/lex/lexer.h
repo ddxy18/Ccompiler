@@ -8,10 +8,13 @@
 #include <fstream>
 #include <queue>
 
-#include "lex/nfa.h"
-#include "lex/token.h"
-
 namespace CCompiler {
+class Token;
+
+class Nfa;
+
+using StrConstIt = std::string::const_iterator;
+
 class Lexer {
   friend class Environment;
 

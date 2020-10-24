@@ -19,16 +19,18 @@ class SpecialPatternNfa;
 
 class RangeNfa;
 
+enum class TokenType;
+
 using RegexAstNodePtr = std::unique_ptr<RegexAstNode>;
 using StrConstIt = std::string::const_iterator;
 // pair.first -- state
 // pair.second -- current begin iterator
 using ReachableStatesMap = std::set<std::pair<int, StrConstIt>>;
 using State = std::pair<int, StrConstIt>;
-using StatePtr = std::unique_ptr<State>;
-// pair.first -- type
+// pair.first -- token type
 // pair.second -- current begin iterator
-using AcceptState = State;
+using AcceptState = std::pair<TokenType, StrConstIt>;
+using AcptStatePtr = std::unique_ptr<AcceptState>;
 
 /**
  * We split a regex to several parts and classify them to types in
@@ -58,15 +60,15 @@ class Nfa {
    *
    * @param regex_rules
    */
-  explicit Nfa(const std::map<std::string, int> &regex_rules);
+  explicit Nfa(const std::map<std::string, TokenType> &regex_rules);
 
   /**
-   * Build a NFA for 'regex'. Notice that if 'regex' is invalid, it
-   * creates an empty NFA.
+   * Build a NFA for regex. Notice that if regex is invalid, it creates an
+   * empty NFA.
    *
    * @param regex
    */
-  explicit Nfa(const std::string &regex, int type,
+  explicit Nfa(const std::string &regex, TokenType type,
                const std::vector<unsigned int> &char_ranges);
 
   /**
@@ -80,7 +82,7 @@ class Nfa {
    * @param end Last iterator of the given string.
    * @return A matched substring. If no match exists, it returns "".
    */
-  StatePtr NextMatch(StrConstIt begin, StrConstIt end);
+  AcptStatePtr NextMatch(StrConstIt begin, StrConstIt end);
 
   /**
    * It is used to determine whether a NFA is a valid NFA.
@@ -226,7 +228,7 @@ class Nfa {
    * map.first -- accept state
    * map.second -- regex type
    */
-  std::map<int, int> accept_states_;
+  std::map<int, TokenType> accept_states_;
 };
 
 /**

@@ -5,11 +5,13 @@
 #include "lex/lexer.h"
 
 #include "environment.h"
+#include "lex/nfa.h"
+#include "lex/token.h"
 
 using namespace CCompiler;
 using namespace std;
 
-Nfa Lexer::nfa_ = Nfa(map<string, int>());
+Nfa Lexer::nfa_ = Nfa(map<string, TokenType>());
 
 Token Lexer::Next() {
   if (tokens_.empty()) {
@@ -80,8 +82,8 @@ Token Lexer::NextTokenInLine(StrConstIt &begin, StrConstIt &end) {
       continue;
     }
 
-    if (token.GetType() == Environment::IntSymbol("string") ||
-        token.GetType() == Environment::IntSymbol("character")) {
+    if (token.GetType() == TokenType::kString ||
+        token.GetType() == TokenType::kCharacter) {
       auto tmp = begin - 1;
       while (begin != end) {
         if (*begin == token.GetToken()[0] && *(begin - 1) != '\\') {
@@ -94,14 +96,14 @@ Token Lexer::NextTokenInLine(StrConstIt &begin, StrConstIt &end) {
         }
         begin++;
       }
-    } else if (token.GetType() == Environment::IntSymbol("comment")) {
+    } else if (token.GetType() == TokenType::kComment) {
       if (token.GetToken() == "//") {  // skip the line
         begin = end;
       } else if (token.GetToken() == "/*") {
         comment_flag = true;
         column_ += token.GetToken().size();
       }
-    } else if (token.GetType() == Environment::IntSymbol("delim")) {
+    } else if (token.GetType() == TokenType::kDelim) {
       column_ += token.GetToken().size();
     } else {
       token.SetLine(line_);

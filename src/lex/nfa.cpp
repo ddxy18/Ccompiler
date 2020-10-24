@@ -9,6 +9,8 @@
 #include <sstream>
 #include <stack>
 
+#include "lex/token.h"
+
 using namespace CCompiler;
 using namespace std;
 
@@ -70,7 +72,7 @@ PushOr(stack<RegexAstNodePtr> &op_stack, stack<RegexAstNodePtr> &rpn_stack);
 bool PushQuantifier(stack<RegexAstNodePtr> &op_stack,
                     stack<RegexAstNodePtr> &rpn_stack, const string &regex);
 
-StatePtr Nfa::NextMatch(StrConstIt begin, StrConstIt end) {
+AcptStatePtr Nfa::NextMatch(StrConstIt begin, StrConstIt end) {
   vector<ReachableStatesMap> state_vec = StateRoute(begin, end);
   auto it = state_vec.cbegin();
   State state = *state_vec[0].find({begin_state_, begin});
@@ -312,7 +314,7 @@ int Nfa::GetCharLocation(int c) {
  * the new begin state to all nfas' begin states. All accept states are
  * reserved.
  */
-Nfa::Nfa(const map<string, int> &regex_rules) {
+Nfa::Nfa(const map<string, TokenType> &regex_rules) {
   // initialize char_ranges_
   if (!regex_rules.empty()) {
     string regex;
@@ -337,7 +339,7 @@ Nfa::Nfa(const map<string, int> &regex_rules) {
   }
 }
 
-Nfa::Nfa(const string &regex, int type,
+Nfa::Nfa(const string &regex, TokenType type,
          const vector<unsigned int> &char_ranges) {
   auto ast_head = ParseRegex(regex);
   if (ast_head) {
@@ -631,20 +633,20 @@ Nfa NfaFactory::MakeCharacterNfa(
 
   if (characters.size() == 1) {
     if (characters == ".") {
-      nfa.accept_states_[nfa.begin_state_] = -1;
+      nfa.accept_states_[nfa.begin_state_] = TokenType::kEmpty;
       nfa.special_pattern_states_.insert(
               {nfa.begin_state_, SpecialPatternNfa(characters)});
     } else {  // single character
       nfa.NewState();
-      nfa.accept_states_[Nfa::i_] = -1;
+      nfa.accept_states_[Nfa::i_] = TokenType::kEmpty;
       nfa.exchange_map_[nfa.begin_state_][nfa.GetCharLocation(
               characters[0])].insert(nfa.accept_states_.cbegin()->first);
     }
   } else if (characters[0] == '[') {  // [...]
-    nfa.accept_states_[nfa.begin_state_] = -1;
+    nfa.accept_states_[nfa.begin_state_] = TokenType::kEmpty;
     nfa.range_states_.insert({nfa.begin_state_, RangeNfa(characters)});
   } else {  // special pattern characters
-    nfa.accept_states_[nfa.begin_state_] = -1;
+    nfa.accept_states_[nfa.begin_state_] = TokenType::kEmpty;
     nfa.special_pattern_states_.insert(
             {nfa.begin_state_, SpecialPatternNfa(characters)});
   }
@@ -672,7 +674,7 @@ Nfa NfaFactory::MakeAlternativeNfa(Nfa left_nfa, Nfa right_nfa) {
           Nfa::kEmptyEdge].insert(Nfa::i_);
   nfa.exchange_map_[right_nfa.accept_states_.cbegin()->first][
           Nfa::kEmptyEdge].insert(Nfa::i_);
-  nfa.accept_states_[Nfa::i_] = -1;
+  nfa.accept_states_[Nfa::i_] = TokenType::kEmpty;
 
   return nfa;
 }
@@ -702,7 +704,7 @@ Nfa NfaFactory::MakeQuantifierNfa(const string &quantifier,
 
   nfa.NewState();
   nfa.begin_state_ = Nfa::i_;
-  nfa.accept_states_[Nfa::i_] = -1;
+  nfa.accept_states_[Nfa::i_] = TokenType::kEmpty;
 
   int i = 1;
   for (; i < repeat_range.first; ++i) {
@@ -733,7 +735,7 @@ Nfa NfaFactory::MakeQuantifierNfa(const string &quantifier,
   }
 
   nfa.accept_states_.clear();
-  nfa.accept_states_[final_accept_state] = -1;
+  nfa.accept_states_[final_accept_state] = TokenType::kEmpty;
 
   if (repeat_range.first == 0) {
     // add an empty edge from the begin state to the accept state
