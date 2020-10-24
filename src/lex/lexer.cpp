@@ -15,7 +15,7 @@ Token Lexer::Next() {
   if (tokens_.empty()) {
     return NextToken();
   } else {
-    auto token = tokens_.back();
+    auto token = tokens_.front();
     tokens_.pop();
     return token;
   }
