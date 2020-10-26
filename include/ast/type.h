@@ -23,16 +23,26 @@ class Type {
   };
 };
 
-class PointerType : public Type {
+class QualType : public Type {
+  enum class Qualifier {
+    kConst,
+    kRestrict,
+    kVolatile,
+    k_Atomic,
+    kEmpty
+  };
+};
+
+class PointerType : public QualType {
 };
 
 class VoidType : public Type {
 };
 
-class ArrayType : public Type {
+class ArrayType : public QualType {
 };
 
-class FuncType : public Type {
+class FuncType : public QualType {
 };
 
 class EnumType : public Type {
