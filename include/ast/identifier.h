@@ -8,6 +8,9 @@
 #include <list>
 #include <memory>
 
+#include "ast/expression.h"
+#include "ast/translation_unit.h"
+
 namespace CCompiler {
 class CompoundStmt;
 
@@ -25,7 +28,7 @@ class Identifier {
   // Scope of identifiers are implicitly included in the AST structure.
 };
 
-class Object : public Identifier {
+class Object : public Identifier, public Expr {
  private:
   enum class Storage {
     kStatic,
@@ -36,10 +39,10 @@ class Object : public Identifier {
   Storage storage_;
 };
 
-class Function : public Identifier {
+class Function : public Identifier, public ExternalDef {
   using ParamList = std::list<std::unique_ptr<Object>>;
  private:
-  ParamList param_list_;
+  ParamList params_;
   std::unique_ptr<CompoundStmt> body_;
 };
 }

@@ -5,9 +5,14 @@
 #ifndef CCOMPILER_TYPE_H
 #define CCOMPILER_TYPE_H
 
+#include <list>
+#include <memory>
+
 namespace CCompiler {
+class Identifier;
 
 class Type {
+ private:
   enum class Specifier {
     kChar,
     kShort,
@@ -21,9 +26,11 @@ class Type {
     k_Complex,
     kDerived  // all other types derived from Type
   };
+  Specifier specifier_;
 };
 
 class QualType : public Type {
+ private:
   enum class Qualifier {
     kConst,
     kRestrict,
@@ -31,27 +38,44 @@ class QualType : public Type {
     k_Atomic,
     kEmpty
   };
+  Qualifier qualifier_;
 };
 
-class PointerType : public QualType {
+class DerivedType : public Type {
+ private:
+  std::unique_ptr<QualType> derived_;
+};
+
+class PointerType : public DerivedType {
 };
 
 class VoidType : public Type {
 };
 
-class ArrayType : public QualType {
+class ArrayType : public DerivedType {
+ private:
+  int length_;
+  // element type is stored in derived_
 };
 
-class FuncType : public QualType {
+class FuncType : public DerivedType {
+ private:
+  using ParamList = std::list<std::unique_ptr<Type>>;
+  ParamList params_;  // type information for parameters in sequence
+  // return type is stored in derived_
 };
 
-class EnumType : public Type {
+// members in struct and union
+using MemberList = std::list<std::unique_ptr<Identifier>>;
+
+class StructType : public DerivedType {
+ private:
+  MemberList members_;
 };
 
-class StructType : public Type {
-};
-
-class UnionType : public Type {
+class UnionType : public DerivedType {
+ private:
+  MemberList members_;
 };
 }
 

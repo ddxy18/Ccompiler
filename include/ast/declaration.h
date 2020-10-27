@@ -8,8 +8,11 @@
 #include <memory>
 
 #include "ast/statement.h"
+#include "ast/translation_unit.h"
 
 namespace CCompiler {
+class Expr;
+
 class Initializer;
 
 class Object;
@@ -23,7 +26,7 @@ class Type;
  * the code. Decl is inherited from Stmt so we can combine the declarations
  * and statements in a block, which simplifies the structure for CompoundStmt.
  */
-class Decl : public Stmt {
+class Decl : public Stmt, public ExternalDef {
  public:
   Decl(std::unique_ptr<Object> object, std::unique_ptr<Initializer> initializer)
           : object_(std::move(object)),
@@ -35,6 +38,8 @@ class Decl : public Stmt {
 };
 
 class Initializer {
+ private:
+  std::list<std::unique_ptr<Expr>> initializers_;  // list is for {} initializer
 };
 }
 

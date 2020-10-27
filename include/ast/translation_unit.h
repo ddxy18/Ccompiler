@@ -13,8 +13,10 @@ class Decl;
 
 class Function;
 
-using DeclList = std::list<std::unique_ptr<Decl>>;
-using FuncList = std::list<std::unique_ptr<Function>>;
+class ExternalDef {
+};
+
+using ExternalDefList = std::list<std::unique_ptr<ExternalDef>>;
 
 /**
  * A translation unit contains either declarations(have richer semantics than
@@ -23,8 +25,7 @@ using FuncList = std::list<std::unique_ptr<Function>>;
  */
 class TranslationUnit {
  private:
-  DeclList decl_list_;
-  FuncList func_list_;
+  ExternalDefList external_defs_;
 };
 }
 
