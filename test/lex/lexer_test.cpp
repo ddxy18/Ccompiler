@@ -21,23 +21,23 @@ class CCompilerEnvironment : public ::testing::Environment {
 [[maybe_unused]] auto c_compiler_env = AddGlobalTestEnvironment(
         new CCompilerEnvironment);
 
-void NextStream(queue<string> token_queue, stringbuf buffer) {
+void NextStream(vector<string> tokens, stringbuf buffer) {
   Lexer lexer(buffer);
   Token token;
 
   while (!(token = lexer.Next()).Empty()) {
-    EXPECT_EQ(token.GetToken(), token_queue.front());
-    token_queue.pop();
+    EXPECT_EQ(token.GetToken(), tokens.front());
+    tokens.erase(tokens.cbegin());
   }
 }
 
-void PeekStream(queue<string> token_queue, stringbuf buffer) {
+void PeekStream(vector<string> tokens, stringbuf buffer) {
   Lexer lexer(buffer);
   Token token;
 
   while (!(token = lexer.Peek()).Empty()) {
-    EXPECT_EQ(token.GetToken(), token_queue.front());
-    token_queue.pop();
+    EXPECT_EQ(token.GetToken(), tokens.front());
+    tokens.erase(tokens.cbegin());
   }
 }
 
@@ -46,11 +46,11 @@ TEST(Lexer, LineComment) {
                    "\r\n"
                    "int i = 3 * 5u;  // something\r\n"
                    "const char *s = \"abc\";");
-  queue <string> token_queue{
+  vector<string> tokens{
           {"int", "i", "=", "3", "*", "5u", ";",
                   "const", "char", "*", "s", "=", "\"abc\"", ";"}};
 
-  NextStream(token_queue, std::move(buffer));
+  NextStream(tokens, std::move(buffer));
 }
 
 TEST(Lexer, BlockComment) {
@@ -60,23 +60,42 @@ TEST(Lexer, BlockComment) {
                    "\r\n"
                    "    while (i++ < 10);\r\n"
                    "}");
-  queue <string> token_queue{{"int", "main", "(", ")", "{",
-                                     "int", "i", "=", "0", ";",
-                                     "while", "(", "i", "++", "<", "10", ")", ";",
-                                     "}"}};
+  vector<string> tokens{{"int", "main", "(", ")", "{",
+                                "int", "i", "=", "0", ";",
+                                "while", "(", "i", "++", "<", "10", ")", ";",
+                                "}"}};
 
-  NextStream(token_queue, std::move(buffer));
+  NextStream(tokens, std::move(buffer));
 }
 
 TEST(Lexer, InvalidToken) {
   stringbuf buffer("int $i;");
-  queue <string> token_queue{{"int", "i", ";"}};
+  vector<string> tokens{{"int", "i", ";"}};
 
-  NextStream(token_queue, std::move(buffer));
+  NextStream(tokens, std::move(buffer));
 }
 
 TEST(Lexer, Peek) {
-  queue <string> token_queue{{"int", "a", "[", "10", "]", ";"}};
+  vector<string> tokens{{"int", "a", "[", "10", "]", ";"}};
 
-  PeekStream(token_queue, stringbuf("int a[10];"));
+  PeekStream(tokens, stringbuf("int a[10];"));
+}
+
+TEST(Lexer, Rollback) {
+  vector<string> tokens{{"int", "a", ";"}};
+  stringbuf buffer("int a;");
+  Lexer lexer(buffer);
+
+  Token token = lexer.Next();
+  EXPECT_EQ(token.GetToken(), tokens.front());
+  tokens.erase(tokens.cbegin());
+  token = lexer.Next();
+  EXPECT_EQ(token.GetToken(), tokens.front());
+  tokens.erase(tokens.cbegin());
+  token = lexer.Next();
+  EXPECT_EQ(token.GetToken(), tokens.front());
+  tokens.erase(tokens.cbegin());
+
+  lexer.Rollback(token);
+  EXPECT_EQ(token.GetToken(), ";");
 }

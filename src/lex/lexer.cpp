@@ -18,7 +18,7 @@ Token Lexer::Next() {
     return NextToken();
   } else {
     auto token = tokens_.front();
-    tokens_.pop();
+    tokens_.erase(tokens_.cbegin());
     return token;
   }
 }
@@ -26,7 +26,7 @@ Token Lexer::Next() {
 Token Lexer::Peek() {
   auto token = NextToken();
   if (!token.Empty()) {
-    tokens_.push(token);
+    tokens_.push_back(token);
   }
   return token;
 }
@@ -113,4 +113,8 @@ Token Lexer::NextTokenInLine(StrConstIt &begin, StrConstIt &end) {
     }
   }
   return Token();
+}
+
+void Lexer::Rollback(const Token &token) {
+  tokens_.insert(tokens_.cbegin(), token);
 }

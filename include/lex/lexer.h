@@ -6,7 +6,7 @@
 #define CCOMPILER_LEXER_H
 
 #include <fstream>
-#include <queue>
+#include <vector>
 
 namespace CCompiler {
 class Token;
@@ -38,6 +38,12 @@ class Lexer {
    */
   Token Peek();
 
+  /**
+   * Add a consumed token back to the Lexer.
+   * @param token
+   */
+  void Rollback(const Token &token);
+
  private:
   /**
    * It gets a token from source_file_stream_. It can automatically
@@ -55,7 +61,7 @@ class Lexer {
   int line_;
   int column_;
   // store tokens that are got but not consumed immediately
-  std::queue<Token> tokens_;
+  std::vector<Token> tokens_;
 };
 }
 
