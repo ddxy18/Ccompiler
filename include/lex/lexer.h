@@ -20,7 +20,7 @@ class Lexer {
   friend class Environment;
 
  public:
-  explicit Lexer(std::ifstream source_file) : line_(0), column_(0) {
+  explicit Lexer(std::ifstream &source_file) : line_(0), column_(0) {
     source_stream_ << source_file.rdbuf();
   }
 
