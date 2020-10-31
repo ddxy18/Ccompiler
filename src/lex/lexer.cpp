@@ -38,7 +38,7 @@ Token Lexer::NextToken() {
 
   while (true) {
     if (line_flag) {
-      while (getline(source_file_stream_, line)) {
+      while (getline(source_stream_, line)) {
         line_++;
         column_ = 0;
         line_flag = false;

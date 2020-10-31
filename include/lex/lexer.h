@@ -6,6 +6,7 @@
 #define CCOMPILER_LEXER_H
 
 #include <fstream>
+#include <sstream>
 #include <vector>
 
 namespace CCompiler {
@@ -19,10 +20,14 @@ class Lexer {
   friend class Environment;
 
  public:
-  explicit Lexer(std::streambuf &source_file)
+  explicit Lexer(std::ifstream source_file) : line_(0), column_(0) {
+    source_stream_ << source_file.rdbuf();
+  }
+
+  explicit Lexer(const std::string &source_string)
           : line_(0),
             column_(0),
-            source_file_stream_(&source_file) {}
+            source_stream_(source_string) {}
 
   /**
    * Get and consume the next token.
@@ -57,7 +62,7 @@ class Lexer {
 
   static Nfa nfa_;
 
-  std::istream source_file_stream_;
+  std::stringstream source_stream_;
   int line_;
   int column_;
   // store tokens that are got but not consumed immediately
