@@ -5,80 +5,95 @@
 #ifndef CCOMPILER_PARSER_H
 #define CCOMPILER_PARSER_H
 
+#include <functional>
+#include <list>
 #include <map>
 #include <set>
-#include <vector>
 
-#include "ast/ast.h"
 #include "ast/declaration.h"
 #include "ast/type.h"
-#include "lex/token.h"
 #include "lex/lexer.h"
+#include "lex/token.h"
 
-namespace Ccompiler {
-    class Parser {
-    public:
-        Parser(int start_symbol, const std::string &source_file) :
-                start_symbol_(start_symbol), lexer_(source_file) {}
+namespace CCompiler {
+class Constant;
 
-        /**
-         * Initialize 'grammar_map_'.
-         *
-         * @param grammar_file A file stores the grammar which is defined by
-         * bison like syntax rules.
-         */
-        static void GrammarMapInit(const std::string &grammar_file);
+class TranslationUnit;
 
-        virtual AstNodePtr NewNode() = 0;
+class Object;
 
-        virtual AstNodePtr NewNode(int symbol) = 0;
+class Decl;
 
-    protected:
-        static bool IsTerminalSymbol(int symbol) {
-            return grammar_map_[symbol].empty();
-        }
+class Initializer;
 
-        /**
-         * pair.first -- symbol
-         * pair.second.element -- production
-         * pair.second.element.element -- symbol in a generator
-         */
-        static std::map<int, std::vector<std::vector<int>>> grammar_map_;
+class CompoundStmt;
 
-        int start_symbol_;
+class Type;
 
-        Lexer lexer_;
-    };
+class PointerType;
 
-    class LL1Parser : public Parser {
-    public:
-        LL1Parser(int start_symbol, const std::string &source_file) :
-                Parser(start_symbol, source_file) {
-            PredictTableInit();
-        }
+class Parser {
+ public:
+  explicit Parser(std::ifstream &source_file) : lexer_(source_file) {}
 
-        AstNodePtr NewNode() override {
-            return NewNode(start_symbol_);
-        }
+  TranslationUnit *Parse();
 
-        AstNodePtr NewNode(int symbol) override;
+ private:
+  void ParseTranslateUnit(TranslationUnit *trans_unit);
 
-    private:
-        void PredictTableInit();
+  Type *ParseDeclSpec();
 
-        std::set<int> First(int symbol);
+  bool IsDeclSpec(Token token);
 
-        std::set<int> First(std::vector<int> symbols);
+  /**
+   * @param flag true--struct, false--union
+   * @return
+   */
+  StructUnionType *ParseStructOrUnion(bool flag);
 
-        std::map<int, std::set<int>> Follow();
+  EnumType *ParseEnum();
 
-        /**
-         * map.first -- non-terminal symbol
-         * map.second.first -- input symbol
-         * map.second.second -- generator sequence in 'grammar_map_'
-         */
-        std::map<int, std::map<int, int>> predict_table_;
-    };
+  std::list<Decl *> ParseDecl();
+
+  Identifier *ParseDeclarator(Type *type);
+
+  Constant *ParseConstExpr();
+
+  PointerType *ParsePointer(Type *type);
+
+  Initializer *ParseInitializer(Initializer::Element *offset);
+
+  CompoundStmt *ParseCompoundStmt();
+
+  Stmt *ParseStmt();
+
+  /**
+   * @tparam T
+   * @param ParseElement
+   * @param end Required token after the whole list. TokenType::kEmpty means
+   * that the next token after the list doesn't have to be checked.
+   * @param delim Split the element in the list. ',' is the default delimiter
+   * . Notice that a valid element is guaranteed to be appear both before the
+   * delim and after the delim.
+   * @return
+   */
+  template<class T>
+  std::list<T>
+  ParseList(std::function<T(int)> ParseElement,
+            TokenType end = TokenType::kEmpty,
+            TokenType delim = TokenType::kComma);
+
+  /**
+   * Check whether the next token's type equals type. It will consume the
+   * token after checking it.
+   *
+   * @param type
+   * @return
+   */
+  Token Check(TokenType type);
+
+  Lexer lexer_;
+};
 }
 
-#endif //CCOMPILER_PARSER_H
+#endif // CCOMPILER_PARSER_H

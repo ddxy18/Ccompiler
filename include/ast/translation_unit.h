@@ -6,17 +6,9 @@
 #define CCOMPILER_TRANSLATION_UNIT_H
 
 #include <list>
-#include <memory>
 
 namespace CCompiler {
 class Decl;
-
-class Function;
-
-class ExternalDef {
-};
-
-using ExternalDefList = std::list<std::unique_ptr<ExternalDef>>;
 
 /**
  * A translation unit contains either declarations(have richer semantics than
@@ -24,8 +16,13 @@ using ExternalDefList = std::list<std::unique_ptr<ExternalDef>>;
  * function definitions.
  */
 class TranslationUnit {
+ public:
+  void AddExternalDef(Decl *decl) {
+    decls_.push_back(decl);
+  }
+
  private:
-  ExternalDefList external_defs_;
+  std::list<Decl *> decls_;
 };
 }
 

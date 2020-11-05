@@ -6,11 +6,10 @@
 #define CCOMPILER_EXPRESSION_H
 
 #include <list>
-#include <memory>
 #include <string>
 
 namespace CCompiler {
-class Function;
+class FuncDecl;
 
 class Object;
 
@@ -23,29 +22,34 @@ class Expr {
 
 class UnaryExpr : public Expr {
  private:
-  std::unique_ptr<Expr> op_;
+  Expr* op_;
 };
 
 class BinaryExpr : public Expr {
  private:
-  std::unique_ptr<Expr> left_op_;
-  std::unique_ptr<Expr> right_op_;
+  Expr* left_op_;
+  Expr* right_op_;
 };
 
 class FuncCall : public Expr {
  private:
-  using ParamList = std::list<std::unique_ptr<Expr>>;
+  using ParamList = std::list<Expr*>;
   ParamList params_;
-  std::unique_ptr<Function> func_;
+  FuncDecl* func_;
 };
 
 class Constant : public Expr {
- private:
+ public:
   union Const {
     int integer_;
     double float_;
     std::string literal_;
   };
+  [[nodiscard]] const Const &GetConst() const {
+    return const_;
+  }
+
+ private:
   Const const_;
 };
 }
