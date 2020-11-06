@@ -448,16 +448,20 @@ Parser::ParseList(function<T(int)> ParseElement,
 
 Stmt *Parser::ParseStmt() {
   Token token = lexer_.Next();
-  // TODO(dxy): determine condition to distinguish whether it is an expr stmt
   if (token.GetType() == TokenType::kIdentifier) {
-    string ident = token.GetToken();
+    auto ident = token;
     token = lexer_.Next();
     if (token.GetType() == TokenType::kColon) {  // labeled statement
-      return new LabelStmt(new LabelStmt::Label(
-              new Identifier(nullptr, Identifier::Linkage::kNone, ident)),
+      return new LabelStmt(new LabelStmt::Label(new Identifier(nullptr,
+                                                               Identifier::Linkage::kNone,
+                                                               ident.GetToken())),
                            ParseStmt());
-    } else {  // expression statement
-      // TODO(dxy):
+    } else {  // expression statement started with ident
+      lexer_.Rollback(token);
+      lexer_.Rollback(ident);
+      auto expr = ParseExpr();
+      Check(TokenType::kSemicolon);
+      return expr;
     }
     // labeled statement in switch statement
   } else if (token.GetType() == TokenType::kCase) {
@@ -470,11 +474,22 @@ Stmt *Parser::ParseStmt() {
   }
     // selection statement
   else if (token.GetType() == TokenType::kIf) {
-    // TODO(dxy):
     Check(TokenType::kLeftParenthesis);
+    auto condition = ParseExpr();
+    Check(TokenType::kRightParenthesis);
+    auto if_stmt = ParseStmt();
+    token = lexer_.Next();
+    if (token.GetType() == TokenType::kElse) {
+      return new IfStmt(condition, if_stmt, ParseStmt());
+    } else {
+      lexer_.Rollback(token);
+      return new IfStmt(condition, if_stmt, nullptr);
+    }
   } else if (token.GetType() == TokenType::kSwitch) {
-    // TODO(dxy):
     Check(TokenType::kLeftParenthesis);
+    auto condition = ParseExpr();
+    Check(TokenType::kRightParenthesis);
+    return new SwitchStmt(condition, ParseStmt());
   }
     // compound statement
   else if (token.GetType() == TokenType::kLeftCurlyBracket) {
@@ -482,18 +497,59 @@ Stmt *Parser::ParseStmt() {
   }
     // iteration statement
   else if (token.GetType() == TokenType::kWhile) {
-    // TODO(dxy):
     Check(TokenType::kLeftParenthesis);
+    auto condition = ParseExpr();
+    Check(TokenType::kRightParenthesis);
+    return new WhileStmt(condition, ParseStmt());
   } else if (token.GetType() == TokenType::kDo) {
-    // TODO(dxy):
-  } else if (token.GetType() == TokenType::kFor) {
-    // TODO(dxy):
+    auto stmt = ParseStmt();
+    Check(TokenType::kWhile);
     Check(TokenType::kLeftParenthesis);
+    auto condition = ParseExpr();
+    Check(TokenType::kRightParenthesis);
+    Check(TokenType::kSemicolon);
+    return new DoWhileStmt(condition, stmt);
+  } else if (token.GetType() == TokenType::kFor) {
+    Check(TokenType::kLeftParenthesis);
+
+    list<Stmt *> init;
+    token = lexer_.Next();
+    if (IsDeclSpec(token)) {  // declaration
+      lexer_.Rollback(token);
+      for (auto &decl:ParseDecl()) {
+        init.push_back(decl);
+      }
+    } else if (token.GetType() != TokenType::kSemicolon) {  // expression
+      lexer_.Rollback(token);
+      init.push_back(ParseExpr());
+      Check(TokenType::kSemicolon);
+    }
+
+    Expr *condition = nullptr;
+    token = lexer_.Next();
+    if (token.GetType() != TokenType::kSemicolon) {
+      lexer_.Rollback(token);
+      condition = ParseExpr();
+      Check(TokenType::kSemicolon);
+    }
+
+    Expr *after_loop = nullptr;
+    token = lexer_.Next();
+    if (token.GetType() != TokenType::kRightParenthesis) {
+      lexer_.Rollback(token);
+      after_loop = ParseExpr();
+    } else {
+      lexer_.Rollback(token);
+    }
+
+    Check(TokenType::kRightParenthesis);
+    return new ForStmt(init, condition, after_loop, ParseStmt());
   }
     // jump statement
   else if (token.GetType() == TokenType::kGoto) {
-    return new JumpStmt(JumpStmt::JumpType::kGoto,
-                        Check(TokenType::kIdentifier).GetToken());
+    Check(TokenType::kSemicolon);
+    auto ident = Check(TokenType::kIdentifier).GetToken();
+    return new JumpStmt(JumpStmt::JumpType::kGoto, ident);
   } else if (token.GetType() == TokenType::kContinue) {
     Check(TokenType::kSemicolon);
     return new JumpStmt(JumpStmt::JumpType::kContinue);
@@ -501,8 +557,17 @@ Stmt *Parser::ParseStmt() {
     Check(TokenType::kSemicolon);
     return new JumpStmt(JumpStmt::JumpType::kBreak);
   } else if (token.GetType() == TokenType::kReturn) {
-    Check(TokenType::kSemicolon);
-    return new JumpStmt(JumpStmt::JumpType::kReturn);
+    token = lexer_.Next();
+    if (token.GetType() == TokenType::kSemicolon) {
+      return new ReturnStmt(nullptr);
+    } else {
+      lexer_.Rollback(token);
+      auto return_value = ParseExpr();
+      Check(TokenType::kSemicolon);
+      return new ReturnStmt(return_value);
+    }
+  } else {
+    return ParseExpr();
   }
 }
 
@@ -536,7 +601,35 @@ std::list<Decl *> Parser::ParseDecl() {
   }
 }
 
-bool Parser::IsDeclSpec(Token token) {
-// TODO(dxy):
+bool Parser::IsDeclSpec(const Token &token) {
+  if (token.GetType() == TokenType::kStruct ||
+      token.GetType() == TokenType::kUnion ||
+      token.GetType() == TokenType::kEnum ||
+      token.GetType() == TokenType::kExtern ||
+      token.GetType() == TokenType::kStatic ||
+      token.GetType() == TokenType::k_Thread_local ||
+      token.GetType() == TokenType::kAuto ||
+      token.GetType() == TokenType::kRegister ||
+      token.GetType() == TokenType::kChar ||
+      token.GetType() == TokenType::kShort ||
+      token.GetType() == TokenType::kInt ||
+      token.GetType() == TokenType::kLong ||
+      token.GetType() == TokenType::kFloat ||
+      token.GetType() == TokenType::kDouble ||
+      token.GetType() == TokenType::kSigned ||
+      token.GetType() == TokenType::kUnsigned ||
+      token.GetType() == TokenType::k_Bool ||
+      token.GetType() == TokenType::k_Complex ||
+      token.GetType() == TokenType::kVoid ||
+      token.GetType() == TokenType::kConst ||
+      token.GetType() == TokenType::kRestrict ||
+      token.GetType() == TokenType::kVolatile) {
+    return true;
+  }
   return false;
+}
+
+Expr *Parser::ParseExpr() {
+// TODO(dxy):
+  return nullptr;
 }

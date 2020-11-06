@@ -43,7 +43,7 @@ class Parser {
 
   Type *ParseDeclSpec();
 
-  bool IsDeclSpec(Token token);
+  static bool IsDeclSpec(const Token &token);
 
   /**
    * @param flag true--struct, false--union
@@ -66,6 +66,13 @@ class Parser {
   CompoundStmt *ParseCompoundStmt();
 
   Stmt *ParseStmt();
+
+  /**
+   * Caller doesn't have to check the first several tokens to determine
+   * whether it is a valid expression. This work will be done by the function.
+   * @return
+   */
+  Expr *ParseExpr();
 
   /**
    * @tparam T

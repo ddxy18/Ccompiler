@@ -31,7 +31,14 @@ class CompoundStmt : public Stmt {
 };
 
 class IfStmt : public CompoundStmt {
+ public:
+  // TODO(dxy):
+  IfStmt(Expr *condition, Stmt *if_stmt, Stmt *else_stmt)
+          : condition_(condition),
+            else_(else_stmt) {}
+
  private:
+  // If statement is stored in base class.
   Expr *condition_;
   Stmt *else_;
 };
@@ -61,24 +68,41 @@ class LabelStmt : public CompoundStmt {
 };
 
 class SwitchStmt : public CompoundStmt {
+ public:
+  // TODO(dxy): initialize base class
+  SwitchStmt(Expr *condition, Stmt *stmt) : condition_(condition) {}
+
  private:
   Expr *condition_;
-  LabelStmt *labels_;
 };
 
 class WhileStmt : public CompoundStmt {
+ public:
+  // TODO(dxy): initialize base class
+  WhileStmt(Expr *condition, Stmt *stmt) : condition_(condition) {}
+
  private:
   Expr *condition_;
 };
 
 class DoWhileStmt : public CompoundStmt {
+ public:
+  // TODO(dxy): initialize base class
+  DoWhileStmt(Expr *condition, Stmt *stmt) : condition_(condition) {}
+
  private:
   Expr *condition_;
 };
 
 class ForStmt : public CompoundStmt {
+ public:
+  ForStmt(std::list<Stmt *> init, Expr *condition, Stmt *after_loop, Stmt *body)
+          : initializer_(std::move(init)),
+            condition_(condition),
+            after_loop_(after_loop) {}
+
  private:
-  Stmt *initializer_;
+  std::list<Stmt *> initializer_;
   Expr *condition_;
   Stmt *after_loop_;
 };
@@ -99,6 +123,16 @@ class JumpStmt : public Stmt {
  private:
   JumpType jump_;
   std::string ident_;  // only for goto statement
+};
+
+class ReturnStmt : public JumpStmt {
+ public:
+  explicit ReturnStmt(Expr *return_value) :
+          JumpStmt(JumpType::kReturn),
+          return_(return_value) {}
+
+ private:
+  Expr *return_;
 };
 }
 
