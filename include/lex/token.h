@@ -59,7 +59,7 @@ enum class TokenType {
   kNumber,
   kTilde,  // ~
   kAsterisk,  // *
-  kDereference,  // ->
+  kArrow,  // ->
   kDot,  // .
   kQuestion,  // ?
   kMinus,  // -

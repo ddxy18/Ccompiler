@@ -61,7 +61,7 @@ map<string, TokenType> Environment::regex_rules_{
                                    TokenType::kNumber},
         {"~",                      TokenType::kTilde},
         {"\\*",                    TokenType::kAsterisk},
-        {"->",                     TokenType::kDereference},
+        {"->",                     TokenType::kArrow},
         {"\\.",                    TokenType::kDot},
         {"\\?",                    TokenType::kQuestion},
         {"-",                      TokenType::kMinus},
