@@ -829,6 +829,10 @@ StrConstIt SpecialPatternNfa::NextMatch(
       if (*begin == '\n') {
         return begin + 1;
       }
+    } else if (characters_ == "\\r") {  // \r
+      if (*begin == '\r') {
+        return begin + 1;
+      }
     } else if (characters_ == "\\v") {  // \v
       if (*begin == '\v') {
         return begin + 1;
