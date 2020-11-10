@@ -77,9 +77,9 @@ enum class TokenType {
   kMoreEqual,  // >=
   kEqual,  // ==
   kNotEqual,  // !=
-  kAnd,  // &
-  kOr,  // |
-  kXor,  // ^
+  kBitAnd,  // &
+  kBitOr,  // |
+  kBitXor,  // ^
   kLogicalAnd,  // &&
   kLogicalOr,  // ||
   kLogicalNot,  // !
