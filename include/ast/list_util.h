@@ -22,7 +22,7 @@ bool Equal(const std::list<T *> &l_list, const std::list<T *> &r_list) {
   if (l_list.size() == r_list.size()) {
     auto l_it = l_list.begin(), r_it = r_list.begin();
     for (int i = 0; i < l_list.size(); ++i) {
-      if (typeid(**l_it) != typeid(**r_it) && **l_it == **r_it) {
+      if (typeid(**l_it) != typeid(**r_it) || **l_it != **r_it) {
         return false;
       }
       l_it++;
