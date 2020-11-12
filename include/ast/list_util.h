@@ -12,7 +12,8 @@ namespace CCompiler {
  * It works like == operator. The only difference is that we compare elements
  * in the two lists by checking the two objects pointed by the pointer in the
  * corresponding location instead of checking the two pointer's addresses.
- * @tparam T
+ * @tparam T If T is a class, the user must ensure it has overrode operator ==
+ * and !=
  * @param l_list
  * @param r_list
  * @return
