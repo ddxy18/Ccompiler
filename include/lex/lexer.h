@@ -6,52 +6,68 @@
 #define CCOMPILER_LEXER_H
 
 #include <fstream>
-#include <queue>
-
-#include "lex/nfa.h"
-#include "lex/token.h"
+#include <sstream>
+#include <vector>
 
 namespace CCompiler {
-    class Lexer {
-        friend class Environment;
+class Token;
 
-    public:
-        explicit Lexer(std::streambuf &source_file) :
-                line_(0), column_(0), source_file_stream_(&source_file) {}
+class Nfa;
 
-        /**
-         * Get and consume the next token.
-         *
-         * @return
-         */
-        Token Next();
+using StrConstIt = std::string::const_iterator;
 
-        /**
-         * Get but not consume the next token.
-         *
-         * @return
-         */
-        Token Peek();
+class Lexer {
+  friend class Environment;
 
-    private:
-        /**
-         * It gets a token from source_file_stream_. It can automatically
-         * exclude some useless and invalid tokens.
-         *
-         * @return If no valid token remains, it returns an empty token.
-         */
-        Token NextToken();
+ public:
+  explicit Lexer(std::ifstream &source_file) : line_(0), column_(0) {
+    source_stream_ << source_file.rdbuf();
+  }
 
-        Token NextTokenInLine(StrConstIt &begin, StrConstIt &end);
+  explicit Lexer(const std::string &source_string)
+          : line_(0),
+            column_(0),
+            source_stream_(source_string) {}
 
-        static Nfa nfa_;
+  /**
+   * Get and consume the next token.
+   *
+   * @return
+   */
+  Token Next();
 
-        std::istream source_file_stream_;
-        int line_;
-        int column_;
-        // store tokens that are got but not consumed immediately
-        std::queue<Token> tokens_;
-    };
+  /**
+   * Get but not consume the next token.
+   *
+   * @return
+   */
+  Token Peek();
+
+  /**
+   * Add a consumed token back to the Lexer.
+   * @param token
+   */
+  void Rollback(const Token &token);
+
+ private:
+  /**
+   * It gets a token from source_file_stream_. It can automatically
+   * exclude some useless and invalid tokens.
+   *
+   * @return If no valid token remains, it returns an empty token.
+   */
+  Token NextToken();
+
+  Token NextTokenInLine(StrConstIt &begin, StrConstIt &end);
+
+  static Nfa nfa_;
+
+  std::stringstream source_stream_;
+  int line_;
+  int column_;
+  // store tokens that are got but not consumed immediately
+  std::vector<Token> tokens_;
+};
 }
 
-#endif //CCOMPILER_LEXER_H
+#endif // CCOMPILER_LEXER_H

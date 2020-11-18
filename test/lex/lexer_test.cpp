@@ -6,76 +6,96 @@
 #include "lex/lexer.h"
 
 #include "environment.h"
+#include "lex/token.h"
 
 using namespace CCompiler;
 using namespace std;
 
 class CCompilerEnvironment : public ::testing::Environment {
-public:
-    void SetUp() override {
-        CCompiler::Environment::EnvironmentInit();
-    }
+ public:
+  void SetUp() override {
+    CCompiler::Environment::EnvironmentInit();
+  }
 };
 
 [[maybe_unused]] auto c_compiler_env = AddGlobalTestEnvironment(
         new CCompilerEnvironment);
 
-void NextStream(queue<string> token_queue, stringbuf buffer) {
-    Lexer lexer{buffer};
-    Token token;
+void NextStream(vector<string> tokens, const string &source) {
+  Lexer lexer(source);
+  Token token;
 
-    while (!(token = lexer.Next()).Empty()) {
-        EXPECT_EQ(token.GetToken(), token_queue.front());
-        token_queue.pop();
-    }
+  while (!(token = lexer.Next()).Empty()) {
+    EXPECT_EQ(token.GetToken(), tokens.front());
+    tokens.erase(tokens.cbegin());
+  }
 }
 
-void PeekStream(queue<string> token_queue, stringbuf buffer) {
-    Lexer lexer{buffer};
-    Token token;
+void PeekStream(vector<string> tokens, const string &source) {
+  Lexer lexer(source);
+  Token token;
 
-    while (!(token = lexer.Peek()).Empty()) {
-        EXPECT_EQ(token.GetToken(), token_queue.front());
-        token_queue.pop();
-    }
+  while (!(token = lexer.Peek()).Empty()) {
+    EXPECT_EQ(token.GetToken(), tokens.front());
+    tokens.erase(tokens.cbegin());
+  }
 }
 
 TEST(Lexer, LineComment) {
-    stringbuf buffer{"// Created by dxy on 2020/8/26.\r\n"
-                     "\r\n"
-                     "int i = 3 * 5u;  // something\r\n"
-                     "const char *s = \"abc\";"};
-    queue<string> token_queue{
-            {"int", "i", "=", "3", "*", "5u", ";",
-                    "const", "char", "*", "s", "=", "\"abc\"", ";"}};
+  string source("// Created by dxy on 2020/8/26.\r\n"
+                "\r\n"
+                "int i = 3 * 5u;  // something\r\n"
+                "const char *s = \"abc\";");
+  vector<string> tokens{
+          {"int", "i", "=", "3", "*", "5u", ";",
+                  "const", "char", "*", "s", "=", "\"abc\"", ";"}};
 
-    NextStream(token_queue, std::move(buffer));
+  NextStream(tokens, source);
 }
 
 TEST(Lexer, BlockComment) {
-    stringbuf buffer{"int main() {\r\n"
-                     "    /* something */"
-                     "    int i = 0;\r\n"
-                     "\r\n"
-                     "    while (i++ < 10);\r\n"
-                     "}"};
-    queue<string> token_queue{{"int", "main", "(", ")", "{",
-                                      "int", "i", "=", "0", ";",
-                                      "while", "(", "i", "++", "<", "10", ")", ";",
-                                      "}"}};
+  string source("int main() {\r\n"
+                "    /* something */"
+                "    int i = 0;\r\n"
+                "\r\n"
+                "    while (i++ < 10);\r\n"
+                "}");
+  vector<string> tokens{{"int", "main", "(", ")", "{",
+                                "int", "i", "=", "0", ";",
+                                "while", "(", "i", "++", "<", "10", ")", ";",
+                                "}"}};
 
-    NextStream(token_queue, std::move(buffer));
+  NextStream(tokens, source);
 }
 
 TEST(Lexer, InvalidToken) {
-    stringbuf buffer{"int $i;"};
-    queue<string> token_queue{{"int", "i", ";"}};
+  string source("int $i;");
+  vector<string> tokens{{"int", "i", ";"}};
 
-    NextStream(token_queue, std::move(buffer));
+  NextStream(tokens, source);
 }
 
 TEST(Lexer, Peek) {
-    queue<string> token_queue{{"int", "a", "[", "10", "]", ";"}};
+  vector<string> tokens{{"int", "a", "[", "10", "]", ";"}};
 
-    PeekStream(token_queue, stringbuf{"int a[10];"});
+  PeekStream(tokens, string("int a[10];"));
+}
+
+TEST(Lexer, Rollback) {
+  vector<string> tokens{{"int", "a", ";"}};
+  string source("int a;");
+  Lexer lexer(source);
+
+  Token token = lexer.Next();
+  EXPECT_EQ(token.GetToken(), tokens.front());
+  tokens.erase(tokens.cbegin());
+  token = lexer.Next();
+  EXPECT_EQ(token.GetToken(), tokens.front());
+  tokens.erase(tokens.cbegin());
+  token = lexer.Next();
+  EXPECT_EQ(token.GetToken(), tokens.front());
+  tokens.erase(tokens.cbegin());
+
+  lexer.Rollback(token);
+  EXPECT_EQ(token.GetToken(), ";");
 }

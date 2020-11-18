@@ -5,80 +5,187 @@
 #ifndef CCOMPILER_PARSER_H
 #define CCOMPILER_PARSER_H
 
+#include <functional>
+#include <list>
 #include <map>
 #include <set>
-#include <vector>
 
-#include "ast/ast.h"
 #include "ast/declaration.h"
+#include "ast/translation_unit.h"
 #include "ast/type.h"
-#include "lex/token.h"
 #include "lex/lexer.h"
+#include "lex/token.h"
 
-namespace Ccompiler {
-    class Parser {
-    public:
-        Parser(int start_symbol, const std::string &source_file) :
-                start_symbol_(start_symbol), lexer_(source_file) {}
+namespace CCompiler {
+class Constant;
 
-        /**
-         * Initialize 'grammar_map_'.
-         *
-         * @param grammar_file A file stores the grammar which is defined by
-         * bison like syntax rules.
-         */
-        static void GrammarMapInit(const std::string &grammar_file);
+class Object;
 
-        virtual AstNodePtr NewNode() = 0;
+class Decl;
 
-        virtual AstNodePtr NewNode(int symbol) = 0;
+class Initializer;
 
-    protected:
-        static bool IsTerminalSymbol(int symbol) {
-            return grammar_map_[symbol].empty();
-        }
+class CompoundStmt;
 
-        /**
-         * pair.first -- symbol
-         * pair.second.element -- production
-         * pair.second.element.element -- symbol in a generator
-         */
-        static std::map<int, std::vector<std::vector<int>>> grammar_map_;
+class Type;
 
-        int start_symbol_;
+class PointerType;
 
-        Lexer lexer_;
-    };
+class Parser {
+ public:
+  explicit Parser(std::ifstream &source_file)
+          : lexer_(source_file),
+            trans_unit_(new TranslationUnit()),
+            scope_(trans_unit_->GetScope()) {}
 
-    class LL1Parser : public Parser {
-    public:
-        LL1Parser(int start_symbol, const std::string &source_file) :
-                Parser(start_symbol, source_file) {
-            PredictTableInit();
-        }
+  /**
+   * For testing.
+   * @param source_string
+   */
+  explicit Parser(const std::string &source_string)
+          : lexer_(source_string),
+            trans_unit_(new TranslationUnit()),
+            scope_(trans_unit_->GetScope()) {}
 
-        AstNodePtr NewNode() override {
-            return NewNode(start_symbol_);
-        }
+  TranslationUnit *Parse();
 
-        AstNodePtr NewNode(int symbol) override;
+ private:
+  /**
+   * Parse function definitions and declarations with the file scope(including
+   * function prototype).
+   * @param trans_unit User should ensure its validity.
+   */
+  void ParseTranslateUnit();
 
-    private:
-        void PredictTableInit();
+  Type *ParseDeclSpec();
 
-        std::set<int> First(int symbol);
+  static bool IsDeclSpec(const Token &token);
 
-        std::set<int> First(std::vector<int> symbols);
+  /**
+   * @param flag true--struct, false--union
+   * @return
+   */
+  StructUnionType *ParseStructOrUnion(bool flag);
 
-        std::map<int, std::set<int>> Follow();
+  EnumType *ParseEnum();
 
-        /**
-         * map.first -- non-terminal symbol
-         * map.second.first -- input symbol
-         * map.second.second -- generator sequence in 'grammar_map_'
-         */
-        std::map<int, std::map<int, int>> predict_table_;
-    };
+  /**
+   * It only parses the declarations in the function definition. Declarations
+   * with the file scope are dealt with in the ParseTranslateUnit(). It
+   * parses several declarations with the same type split by ',' once.
+   * @param scope the declarations belong to scope
+   * @return at least have a element
+   */
+  std::list<Decl *> ParseDecl();
+
+  Identifier *ParseDeclarator(Type *type);
+
+  Expr *ParseConstExpr();
+
+  PointerType *ParsePointer(Type *type);
+
+  Initializer *ParseInitializer(Initializer::Element offset);
+
+  /**
+   *
+   * @param scope User should construct the scope itself for the block if
+   * needed.
+   * @return
+   */
+  StmtList ParseCompoundStmt();
+
+  StmtList ParseStmt();
+
+  /**
+   * Caller doesn't have to check the first several tokens to determine
+   * whether it is a valid expression. This work will be done by the function.
+   * @return
+   */
+  Expr *ParseExpr();
+
+  Expr *ParseAssignExpr();
+
+  Expr *ParseConditionalExpr();
+
+  Expr *ParseLogicalOrExpr();
+
+  Expr *ParseLogicalAndExpr();
+
+  Expr *ParseBitOrExpr();
+
+  Expr *ParseBitXorExpr();
+
+  Expr *ParseBitAndExpr();
+
+  Expr *ParseEqualityExpr();
+
+  Expr *ParseRelationalExpr();
+
+  Expr *ParseShiftExpr();
+
+  Expr *ParseAdditiveExpr();
+
+  Expr *ParseMultiplicativeExpr();
+
+  Expr *ParseCastExpr();
+
+  /**
+   * Used in cast.
+   * @return
+   */
+  Type *ParseTypeName();
+
+  Expr *ParseUnaryExpr();
+
+  Expr *ParsePostfixExpr();
+
+  Expr *ParsePrimaryExpr();
+
+  Constant *ParseIntConstExpr();
+
+  /**
+   * @tparam T
+   * @param ParseElement
+   * @param end Required token after the whole list. TokenType::kEmpty means
+   * that the next token after the list doesn't have to be checked.
+   * @param delim Split the element in the list. ',' is the default delimiter
+   * . Notice that a valid element is guaranteed to be appear both before the
+   * delim and after the delim.
+   * @return
+   */
+  template<class T>
+  std::list<T>
+  ParseList(std::function<T(int)> ParseElement,
+            TokenType end = TokenType::kEmpty,
+            TokenType delim = TokenType::kComma);
+
+  /**
+   * @tparam T
+   * @param ParseOperand function to parse any one of the two operands
+   * @param types expected operators
+   * @return If we detect a required binary expression, it returns the
+   * expression. Otherwise it will try to interpret the expression as it is
+   * valid for ParseOperand().
+   */
+  template<class T>
+  T ParseBinaryExpr(std::function<T()> ParseOperand,
+                    const std::list<TokenType> &types);
+
+  /**
+   * Check whether the next token's type equals type. It will consume the
+   * token after checking it.
+   *
+   * @param type
+   * @return
+   */
+  Token Check(TokenType type);
+
+  TranslationUnit *trans_unit_;
+
+  Scope *scope_;
+
+  Lexer lexer_;
+};
 }
 
-#endif //CCOMPILER_PARSER_H
+#endif // CCOMPILER_PARSER_H
