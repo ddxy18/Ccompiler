@@ -11,14 +11,13 @@
 #include <set>
 
 #include "ast/declaration.h"
+#include "ast/translation_unit.h"
 #include "ast/type.h"
 #include "lex/lexer.h"
 #include "lex/token.h"
 
 namespace CCompiler {
 class Constant;
-
-class TranslationUnit;
 
 class Object;
 
@@ -34,12 +33,29 @@ class PointerType;
 
 class Parser {
  public:
-  explicit Parser(std::ifstream &source_file) : lexer_(source_file) {}
+  explicit Parser(std::ifstream &source_file)
+          : lexer_(source_file),
+            trans_unit_(new TranslationUnit()),
+            scope_(trans_unit_->GetScope()) {}
+
+  /**
+   * For testing.
+   * @param source_string
+   */
+  explicit Parser(const std::string &source_string)
+          : lexer_(source_string),
+            trans_unit_(new TranslationUnit()),
+            scope_(trans_unit_->GetScope()) {}
 
   TranslationUnit *Parse();
 
  private:
-  void ParseTranslateUnit(TranslationUnit *trans_unit);
+  /**
+   * Parse function definitions and declarations with the file scope(including
+   * function prototype).
+   * @param trans_unit User should ensure its validity.
+   */
+  void ParseTranslateUnit();
 
   Type *ParseDeclSpec();
 
@@ -53,19 +69,32 @@ class Parser {
 
   EnumType *ParseEnum();
 
+  /**
+   * It only parses the declarations in the function definition. Declarations
+   * with the file scope are dealt with in the ParseTranslateUnit(). It
+   * parses several declarations with the same type split by ',' once.
+   * @param scope the declarations belong to scope
+   * @return at least have a element
+   */
   std::list<Decl *> ParseDecl();
 
   Identifier *ParseDeclarator(Type *type);
 
-  Constant *ParseConstExpr();
+  Expr *ParseConstExpr();
 
   PointerType *ParsePointer(Type *type);
 
-  Initializer *ParseInitializer(Initializer::Element *offset);
+  Initializer *ParseInitializer(Initializer::Element offset);
 
-  CompoundStmt *ParseCompoundStmt();
+  /**
+   *
+   * @param scope User should construct the scope itself for the block if
+   * needed.
+   * @return
+   */
+  StmtList ParseCompoundStmt();
 
-  Stmt *ParseStmt();
+  StmtList ParseStmt();
 
   /**
    * Caller doesn't have to check the first several tokens to determine
@@ -73,6 +102,46 @@ class Parser {
    * @return
    */
   Expr *ParseExpr();
+
+  Expr *ParseAssignExpr();
+
+  Expr *ParseConditionalExpr();
+
+  Expr *ParseLogicalOrExpr();
+
+  Expr *ParseLogicalAndExpr();
+
+  Expr *ParseBitOrExpr();
+
+  Expr *ParseBitXorExpr();
+
+  Expr *ParseBitAndExpr();
+
+  Expr *ParseEqualityExpr();
+
+  Expr *ParseRelationalExpr();
+
+  Expr *ParseShiftExpr();
+
+  Expr *ParseAdditiveExpr();
+
+  Expr *ParseMultiplicativeExpr();
+
+  Expr *ParseCastExpr();
+
+  /**
+   * Used in cast.
+   * @return
+   */
+  Type *ParseTypeName();
+
+  Expr *ParseUnaryExpr();
+
+  Expr *ParsePostfixExpr();
+
+  Expr *ParsePrimaryExpr();
+
+  Constant *ParseIntConstExpr();
 
   /**
    * @tparam T
@@ -91,6 +160,18 @@ class Parser {
             TokenType delim = TokenType::kComma);
 
   /**
+   * @tparam T
+   * @param ParseOperand function to parse any one of the two operands
+   * @param types expected operators
+   * @return If we detect a required binary expression, it returns the
+   * expression. Otherwise it will try to interpret the expression as it is
+   * valid for ParseOperand().
+   */
+  template<class T>
+  T ParseBinaryExpr(std::function<T()> ParseOperand,
+                    const std::list<TokenType> &types);
+
+  /**
    * Check whether the next token's type equals type. It will consume the
    * token after checking it.
    *
@@ -98,6 +179,10 @@ class Parser {
    * @return
    */
   Token Check(TokenType type);
+
+  TranslationUnit *trans_unit_;
+
+  Scope *scope_;
 
   Lexer lexer_;
 };
