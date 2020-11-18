@@ -3,4 +3,4 @@ project(CCompiler)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_library(Ast STATIC scope.cpp)
+add_library(Ast STATIC scope.cpp statement.cpp expression.cpp declaration.cpp type.cpp identifier.cpp)

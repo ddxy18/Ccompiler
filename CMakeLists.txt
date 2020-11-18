@@ -10,6 +10,9 @@ add_executable(CCompiler src/main.cpp)
 # for temporary experiments
 add_executable(CCompilerTemp temp/temp.cpp)
 
+add_executable(CCompilerSource test/source.c)
+
 add_subdirectory(test)
 
 target_link_libraries(CCompiler CCompilerLib)
+target_link_libraries(CCompiler profiler)

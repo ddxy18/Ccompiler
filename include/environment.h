@@ -6,6 +6,7 @@
 #define CCOMPILER_ENVIRONMENT_H
 
 #include <map>
+#include <string>
 
 namespace CCompiler {
 enum class TokenType;

@@ -9,7 +9,9 @@ include_directories(
         ../include)
 
 add_executable(CCompilerTest
+        ast/list_util_test.cpp
         lex/lexer_test.cpp lex/nfa_test.cpp
+        parser/parser_test.cpp
         )
 
 add_subdirectory(../src ../src)
@@ -17,5 +19,6 @@ add_subdirectory(../GoogleTest ../GoogleTest)
 
 target_link_libraries(CCompilerTest CCompilerLib)
 target_link_libraries(CCompilerTest gtest_main)
+target_link_libraries(CCompilerTest profiler)
 
 enable_testing()
