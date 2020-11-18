@@ -5,9 +5,11 @@
 #include "ast/scope.h"
 
 #include "ast/declaration.h"
+#include "ast/identifier.h"
 
 using namespace CCompiler;
 using namespace std;
+
 
 Object *Scope::GetObject(const string &ident) {
   // find an object in the current scope

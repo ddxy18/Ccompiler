@@ -85,12 +85,24 @@ class Scope {
   }
 
   bool operator==(const Scope &rhs) const {
+    if (parent_ == nullptr) {
+      return type_ == rhs.type_ &&
+             rhs.parent_ == nullptr &&
+             CCompiler::Equal(decl_list_, rhs.decl_list_);
+    }
     return type_ == rhs.type_ &&
-    parent_->Equal(rhs.parent_);
-//    ::CCompiler::Equal(decl_list_,rhs.decl_list_);
+           parent_->Equal(rhs.parent_) &&
+           CCompiler::Equal(decl_list_, rhs.decl_list_);
   }
 
-  bool Equal(const Scope *rhs) const {
+  bool operator!=(const Scope &rhs) const {
+    return !(*this == rhs);
+  }
+
+  virtual bool Equal(const Scope *rhs) const {
+    if (rhs == nullptr) {
+      return false;
+    }
     return typeid(*rhs) == typeid(Scope) && *this == *rhs;
   }
 

@@ -6,10 +6,16 @@
 #define CCOMPILER_TYPE_H
 
 #include <list>
+#include <string>
+#include <utility>
 
 namespace CCompiler {
 class Identifier;
 
+/**
+ * Use a bit to determine whether a given qualifier exists. This means that
+ * repeated qualifiers will be ignored.
+ */
 enum Qualifier {
   kEmpty = 0b0,
   kConst = 0b1,
@@ -21,6 +27,16 @@ enum Qualifier {
 class Type {
  public:
   virtual ~Type() = default;
+
+  bool operator==(const Type &rhs) const {
+    return true;
+  }
+
+  bool operator!=(const Type &rhs) const {
+    return !(rhs == *this);
+  }
+
+  virtual bool Equal(const Type *rhs) const = 0;
 };
 
 class QualType : public Type {
@@ -41,6 +57,10 @@ class QualType : public Type {
 
   QualType() : specifier_(0), qualifier_(0) {}
 
+  QualType(unsigned int specifier, unsigned char qualifier)
+          : specifier_(specifier),
+            qualifier_(qualifier) {}
+
   void AddQualifier(Qualifier qualifier) {
     qualifier_ |= qualifier;
   }
@@ -49,8 +69,24 @@ class QualType : public Type {
     specifier_ |= specifier;
   }
 
+  bool operator==(const QualType &rhs) const {
+    return specifier_ == rhs.specifier_ && qualifier_ == rhs.qualifier_;
+  }
+
+  bool operator!=(const QualType &rhs) const {
+    return !(rhs == *this);
+  }
+
+  bool Equal(const Type *rhs) const override {
+    if (rhs == nullptr) {
+      return false;
+    }
+    return typeid(*rhs) == typeid(QualType) &&
+           *this == *dynamic_cast<const QualType *>(rhs);
+  }
+
  private:
-  unsigned int specifier_;
+  unsigned int specifier_;  //!< must > 0
   unsigned char qualifier_;
 };
 
@@ -58,8 +94,27 @@ class DerivedType : public Type {
  public:
   explicit DerivedType(Type *derived) : derived_(derived) {}
 
+  bool operator==(const DerivedType &rhs) const {
+    if (derived_ == nullptr) {
+      return rhs.derived_ == nullptr;
+    }
+    return derived_->Equal(rhs.derived_);
+  }
+
+  bool operator!=(const DerivedType &rhs) const {
+    return !(rhs == *this);
+  }
+
+  bool Equal(const Type *rhs) const override {
+    if (rhs == nullptr) {
+      return false;
+    }
+    return typeid(*rhs) == typeid(DerivedType) &&
+           *this == *dynamic_cast<const DerivedType *>(rhs);
+  }
+
  private:
-  Type *derived_;
+  Type *derived_;  //!< DerivedType is derived from it
 };
 
 class PointerType : public DerivedType {
@@ -67,6 +122,22 @@ class PointerType : public DerivedType {
   PointerType(Type *derived, Qualifier qualifier)
           : DerivedType(derived),
             qualifier_(qualifier) {}
+
+  bool operator==(const PointerType &rhs) const {
+    return DerivedType::operator==(rhs) && qualifier_ == rhs.qualifier_;
+  }
+
+  bool operator!=(const PointerType &rhs) const {
+    return !(rhs == *this);
+  }
+
+  bool Equal(const Type *rhs) const override {
+    if (rhs == nullptr) {
+      return false;
+    }
+    return typeid(*rhs) == typeid(PointerType) &&
+           *this == *dynamic_cast<const PointerType *>(rhs);
+  }
 
  private:
   Qualifier qualifier_;
@@ -78,54 +149,180 @@ class ArrayType : public DerivedType {
           : DerivedType(derived),
             length_(length) {}
 
+  bool operator==(const ArrayType &rhs) const {
+    return DerivedType::operator==(rhs) && length_ == rhs.length_;
+  }
+
+  bool operator!=(const ArrayType &rhs) const {
+    return !(rhs == *this);
+  }
+
+  bool Equal(const Type *rhs) const override {
+    if (rhs == nullptr) {
+      return false;
+    }
+    return typeid(*rhs) == typeid(ArrayType) &&
+           *this == *dynamic_cast<const ArrayType *>(rhs);
+  }
+
  private:
-  int length_;
-  // element type is stored in derived_
+  //!< element type is stored in derived_
+
+  int length_;  //!< use -1 to represent incomplete type
 };
 
-//
+// TODO(dxy): for declaring function pointers and type checking when calling
+//  a function
 class FuncType : public DerivedType {
- private:
+ public:
   using ParamList = std::list<Type *>;
-  ParamList params_;  // type information for parameters in sequence
-  // return type is stored in derived_
+
+  bool operator==(const FuncType &rhs) const;
+
+  bool operator!=(const FuncType &rhs) const {
+    return !(rhs == *this);
+  }
+
+  bool Equal(const Type *rhs) const override {
+    if (rhs == nullptr) {
+      return false;
+    }
+    return typeid(*rhs) == typeid(FuncType) &&
+           *this == *dynamic_cast<const FuncType *>(rhs);
+  }
+
+ private:
+  //!< return type is stored in derived_
+
+  ParamList params_;  //!< type information for parameters in sequence
 };
 
-// members in struct and union
+class TypeDeclType : public Type {
+  friend
+  bool operator==(const TypeDeclType &lhs, const TypeDeclType &rhs);
+
+ public:
+  explicit TypeDeclType(std::string ident) : ident_(std::move(ident)) {}
+
+  [[nodiscard]] const std::string &GetIdent() const {
+    return ident_;
+  }
+
+  bool operator!=(const TypeDeclType &rhs) const {
+    return !(rhs == *this);
+  }
+
+  bool Equal(const Type *rhs) const override {
+    if (rhs == nullptr) {
+      return false;
+    }
+    return typeid(*rhs) == typeid(TypeDeclType) &&
+           *this == *dynamic_cast<const TypeDeclType *>(rhs);
+  }
+
+ private:
+  std::string ident_;
+};
+
+bool operator==(const TypeDeclType &lhs, const TypeDeclType &rhs);
+
+//!< members in struct and union
 using MemberList = std::list<Identifier *>;
 
-class StructUnionType : public Type {
+class StructUnionType : public TypeDeclType {
  public:
   explicit StructUnionType(bool flag, std::string tag = "")
-          : flag_(flag),
-            tag_(std::move(tag)) {}
+          : TypeDeclType(std::move(tag)),
+            flag_(flag) {}
 
   void AddMember(Identifier *ident) {
     members_.push_back(ident);
   }
 
+  bool operator==(const StructUnionType &rhs) const;
+
+  bool operator!=(const StructUnionType &rhs) const {
+    return !(rhs == *this);
+  }
+
+  bool Equal(const Type *rhs) const override {
+    if (rhs == nullptr) {
+      return false;
+    }
+    return typeid(*rhs) == typeid(StructUnionType) &&
+           *this == *dynamic_cast<const StructUnionType *>(rhs);
+  }
+
  private:
-  bool flag_;  // true--struct, false--union
-  std::string tag_;
+  bool flag_;  //!< true--struct, false--union
   MemberList members_;
 };
 
-class EnumType : public Type {
+class EnumType : public TypeDeclType {
  public:
   struct Enumerator {
     std::string ident_;
-    int value_{-1};  // -1 represents no appointed value.
+    int value_{-1};  //!< -1 represents no appointed value.
+
+    bool operator==(const Enumerator &rhs) const {
+      return ident_ == rhs.ident_ && value_ == rhs.value_;
+    }
+
+    bool operator!=(const Enumerator &rhs) const {
+      return !(rhs == *this);
+    }
   };
 
-  explicit EnumType(std::string tag) : tag_(std::move(tag)) {}
+  explicit EnumType(std::string tag) : TypeDeclType(std::move(tag)) {}
 
   void AddEnumerator(const Enumerator &enumerator) {
     enumerators_.push_back(enumerator);
   }
 
+  bool operator==(const EnumType &rhs) const {
+    return TypeDeclType::operator==(rhs) && enumerators_ == rhs.enumerators_;
+  }
+
+  bool operator!=(const EnumType &rhs) const {
+    return !(rhs == *this);
+  }
+
+  bool Equal(const Type *rhs) const override {
+    if (rhs == nullptr) {
+      return false;
+    }
+    return typeid(*rhs) == typeid(EnumType) &&
+           *this == *dynamic_cast<const EnumType *>(rhs);
+  }
+
  private:
-  std::string tag_;
   std::list<Enumerator> enumerators_;
+};
+
+// TODO(dxy):
+class TypeDef : public TypeDeclType {
+ public:
+  bool operator==(const TypeDef &rhs) const {
+    if (type_ == nullptr) {
+      return TypeDeclType::operator==(rhs) && rhs.type_ == nullptr;
+    }
+    return TypeDeclType::operator==(rhs) && type_->Equal(rhs.type_);
+  }
+
+  bool operator!=(const TypeDef &rhs) const {
+    return !(rhs == *this);
+  }
+
+  bool Equal(const Type *rhs) const override {
+    if (rhs == nullptr) {
+      return false;
+    }
+    return typeid(*rhs) == typeid(TypeDef) &&
+           *this == *dynamic_cast<const TypeDef *>(rhs);
+  }
+
+ private:
+  Type *type_;
 };
 }
 

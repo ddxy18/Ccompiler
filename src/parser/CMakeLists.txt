@@ -3,4 +3,10 @@ project(CCompiler)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_library(Parser STATIC parser.cpp ../ast/scope.cpp)
+add_subdirectory(../ast ../ast)
+
+add_library(Parser STATIC parser.cpp)
+
+target_link_libraries(Parser
+        Ast
+        )

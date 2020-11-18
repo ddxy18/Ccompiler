@@ -66,3 +66,10 @@ TEST(ListUtil, DifferentType) {
 
   EXPECT_FALSE(Equal(l1, l2));
 }
+
+TEST(ListUtil, Nullptr) {
+  list<int *> l1{new int(1), nullptr};
+  list<int *> l2{new int(1), new int(2)};
+
+  EXPECT_FALSE(Equal(l1, l2));
+}
